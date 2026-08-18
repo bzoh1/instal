@@ -74,7 +74,7 @@
   .desktop-icons { padding: 20px; display: flex; flex-direction: column; gap: 20px; width: 100px; }
   .desktop-icon { width: 84px; text-align: center; color: white; text-shadow: 0 2px 4px rgba(0,0,0,0.9); cursor: pointer; font-size: 12px; padding: 8px 4px; border-radius: 4px; }
   .desktop-icon:hover { background: rgba(255,255,255,0.15); }
-  .desktop-icon img { width: 44px; height: 44px; margin-bottom: 4px; }
+  .desktop-icon img { width: 44px; height: 44px; margin-bottom: 4px; object-fit: contain; }
 
   /* Меню Пуск */
   .start-menu {
@@ -90,7 +90,7 @@
   .start-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 12px; }
   .start-app-item { display: flex; flex-direction: column; align-items: center; font-size: 11px; color: #ccc; cursor: pointer; padding: 8px 0; border-radius: 6px; }
   .start-app-item:hover { background: rgba(255,255,255,0.08); color: #fff; }
-  .start-app-item img { width: 32px; height: 32px; margin-bottom: 6px; }
+  .start-app-item img { width: 32px; height: 32px; margin-bottom: 6px; object-fit: contain; }
 
   /* Параметри */
   .settings-window {
@@ -116,7 +116,7 @@
   }
   .app-row:hover { background: #323232; }
   .app-info { display: flex; align-items: center; gap: 15px; }
-  .app-info img { width: 28px; height: 28px; }
+  .app-info img { width: 32px; height: 32px; object-fit: contain; }
   .app-details strong { font-size: 13px; display: block; color: #eee; }
   .app-details span { font-size: 11px; color: #999; }
   .btn-standard { background: #3a3a3a; color: #ccc; border: 1px solid #555; padding: 6px 14px; border-radius: 4px; cursor: pointer; font-size: 12px; }
@@ -282,12 +282,12 @@
   </div>
 
   <!-- Крок 1.8: Прогрес встановлення -->
-  <div id="win-step-8" class="win-window hidden" style="justify-center;">
+  <div id="win-step-8" class="win-window hidden" style="justify-content: center;">
     <div class="win-title">Встановлення Windows</div>
     <div style="font-size: 13px; line-height: 2.2; color:#ccc; margin: 20px 0;">
       ✔ Копіювання файлів Windows<br>
       ⏳ Підготовка файлів для інсталяції (<span id="win-progress-text">0</span>%)<br>
-      ⚪ Инсталяція компонентів<br>
+      ⚪ Інсталяція компонентів<br>
       ⚪ Встановлення оновлень<br>
       ⚪ Завершення
     </div>
@@ -367,18 +367,31 @@
         <div class="settings-avatar">Учень</div>
         <div><strong style="font-size:13px;">Учень 9-го класу</strong><br><span style="font-size:11px; color:#888;">Локальний запис</span></div>
       </div>
-      <div class="sidebar-item">🖥️ Система</div>
-      <div class="sidebar-item">🎧 Пристрої</div>
-      <div class="sidebar-item">🌐 Мережа та Інтернет</div>
-      <div class="sidebar-item">🎨 Персоналізація</div>
-      <div class="sidebar-item active" id="tab-btn-apps">📦 Програми</div>
-      <div class="sidebar-item">👤 Облікові записи</div>
-      <div class="sidebar-item">🕒 Час та мова</div>
-      <div class="sidebar-item">🎮 Ігри</div>
-      <div class="sidebar-item">🔒 Безпека</div>
+      <div class="sidebar-item active" id="tab-system" onclick="switchSettingsTab('system')">🖥️ Система</div>
+      <div class="sidebar-item" onclick="switchSettingsTab('devices')">🎧 Пристрої</div>
+      <div class="sidebar-item" onclick="switchSettingsTab('network')">🌐 Мережа та Інтернет</div>
+      <div class="sidebar-item" onclick="switchSettingsTab('personalization')">🎨 Персоналізація</div>
+      <div class="sidebar-item" id="tab-btn-apps" onclick="switchSettingsTab('apps')">📦 Програми</div>
+      <div class="sidebar-item" onclick="switchSettingsTab('accounts')">👤 Облікові записи</div>
+      <div class="sidebar-item" onclick="switchSettingsTab('time')">🕒 Час та мова</div>
+      <div class="sidebar-item" onclick="switchSettingsTab('gaming')">🎮 Ігри</div>
+      <div class="sidebar-item" onclick="switchSettingsTab('security')">🔒 Безпека</div>
     </div>
 
-    <div class="settings-content">
+    <!-- Вміст розділу Система (Активний при відкритті) -->
+    <div class="settings-content" id="settings-view-system">
+      <h2 style="font-size:22px; font-weight:500; margin:0 0 15px 0;">Система</h2>
+      <div style="display:flex; flex-direction:column; gap:10px;">
+        <div class="app-row"><div><strong>Дисплей</strong><br><span style="font-size:11px; color:#888;">Яскравість, нічний режим, роздільна здатність</span></div></div>
+        <div class="app-row"><div><strong>Звук</strong><br><span style="font-size:11px; color:#888;">Гучність, пристрої виводу та вводу</span></div></div>
+        <div class="app-row"><div><strong>Сповіщення</strong><br><span style="font-size:11px; color:#888;">Сповіщення від додатків та системи</span></div></div>
+        <div class="app-row"><div><strong>Пам'ять</strong><br><span style="font-size:11px; color:#888;">Дисковий простір, очищення тимчасових файлів</span></div></div>
+        <div class="app-row"><div><strong>Про систему</strong><br><span style="font-size:11px; color:#888;">Характеристики комп'ютера та версія Windows</span></div></div>
+      </div>
+    </div>
+
+    <!-- Вміст розділу Програми (Прихований за замовчуванням) -->
+    <div class="settings-content hidden" id="settings-view-apps">
       <h2 style="font-size:22px; font-weight:500; margin:0;">Встановлені програми</h2>
       <input type="text" class="apps-search-box" placeholder="Шукати програму у списку..." onkeyup="filterApps(this.value)">
       <div id="apps-list"></div>
@@ -550,36 +563,63 @@
   }
 
   /* --- ЕТАП 3: НАЛАШТУВАННЯ ТА ВИДАЛЕННЯ --- */
+
+  /* База програм з ПРЯМИМИ ПОСИЛАННЯМИ на якісні іконки */
   const programDatabase = [
-    "7-Zip 22.01 (x64)", "Adobe Acrobat Reader DC", "AnyDesk", "Audacity 3.2.1", "AutoHotkey 1.1",
-    "Blender 3.4", "CCleaner", "Cisco Packet Tracer", "CPU-Z 2.03", "Discord",
-    "Figma", "FileZilla Client", "GIMP 2.10.32", "Google Chrome", "Inkscape 1.2",
-    "Java 8 Update 351", "K-Lite Codec Pack", "LibreOffice 7.4", "Microsoft Edge", "Microsoft Visual Studio Code",
-    "Mozilla Firefox", "OBS Studio", "Opera Browser", "Paint.NET", "Python 3.11.0",
-    "Skype", "Spotify", "Steam", "Telegram Desktop", "VLC media player", "WinRAR 6.11", "Zoom"
+    { name: "7-Zip 22.01 (x64)", icon: "https://upload.wikimedia.org/wikipedia/commons/3/33/7-Zip_logo.svg" },
+    { name: "Adobe Acrobat Reader DC", icon: "https://upload.wikimedia.org/wikipedia/commons/1/18/Adobe_Acrobat_Reader_DC_logo.svg" },
+    { name: "AnyDesk", icon: "https://upload.wikimedia.org/wikipedia/commons/e/ee/AnyDesk_logo.svg" },
+    { name: "Audacity 3.2.1", icon: "https://upload.wikimedia.org/wikipedia/commons/e/e2/Audacity_Logo_2021.svg" },
+    { name: "Blender 3.4", icon: "https://upload.wikimedia.org/wikipedia/commons/0/0c/Blender_logo_no_text.svg" },
+    { name: "CCleaner", icon: "https://upload.wikimedia.org/wikipedia/commons/5/52/CCleaner_logo.svg" },
+    { name: "CPU-Z 2.03", icon: "https://upload.wikimedia.org/wikipedia/commons/7/76/Windows_Calculator_icon.png" },
+    { name: "Discord", icon: "https://upload.wikimedia.org/wikipedia/commons/7/73/Discord_Color_Button.svg" },
+    { name: "Figma", icon: "https://upload.wikimedia.org/wikipedia/commons/3/33/Figma-logo.svg" },
+    { name: "FileZilla Client", icon: "https://upload.wikimedia.org/wikipedia/commons/0/01/FileZilla_logo.svg" },
+    { name: "GIMP 2.10.32", icon: "https://upload.wikimedia.org/wikipedia/commons/4/45/The_GIMP_icon_-_Executable_Uninstall.png" },
+    { name: "Google Chrome", icon: "https://upload.wikimedia.org/wikipedia/commons/e/e1/Google_Chrome_icon_%28February_2022%29.svg" },
+    { name: "Inkscape 1.2", icon: "https://upload.wikimedia.org/wikipedia/commons/0/0d/Inkscape_Logo.svg" },
+    { name: "Java 8 Update 351", icon: "https://upload.wikimedia.org/wikipedia/en/3/30/Java_programming_language_logo.svg" },
+    { name: "K-Lite Codec Pack", icon: "https://upload.wikimedia.org/wikipedia/commons/d/d2/VLC_Icon.svg" },
+    { name: "LibreOffice 7.4", icon: "https://upload.wikimedia.org/wikipedia/commons/d/db/LibreOffice_7.0_main_logo.svg" },
+    { name: "Microsoft Edge", icon: "https://upload.wikimedia.org/wikipedia/commons/e/e1/Microsoft_Edge_Logo_2019.svg" },
+    { name: "Microsoft Visual Studio Code", icon: "https://upload.wikimedia.org/wikipedia/commons/9/9a/Visual_Studio_Code_1.35_icon.svg" },
+    { name: "Mozilla Firefox", icon: "https://upload.wikimedia.org/wikipedia/commons/a/a0/Firefox_logo%2C_2019.svg" },
+    { name: "OBS Studio", icon: "https://upload.wikimedia.org/wikipedia/commons/d/d3/OBS_Studio_Logo.svg" },
+    { name: "Opera Browser", icon: "https://upload.wikimedia.org/wikipedia/commons/4/49/Opera_2015_icon.svg" },
+    { name: "Paint.NET", icon: "https://upload.wikimedia.org/wikipedia/commons/0/0a/Paint.NET_4.0_icon.svg" },
+    { name: "Python 3.11.0", icon: "https://upload.wikimedia.org/wikipedia/commons/c/c3/Python-logo-notext.svg" },
+    { name: "Skype", icon: "https://upload.wikimedia.org/wikipedia/commons/a/a8/Skype_logo_2019.svg" },
+    { name: "Spotify", icon: "https://upload.wikimedia.org/wikipedia/commons/1/19/Spotify_logo_without_text.svg" },
+    { name: "Steam", icon: "https://upload.wikimedia.org/wikipedia/commons/8/83/Steam_icon_logo.svg" },
+    { name: "Telegram Desktop", icon: "https://upload.wikimedia.org/wikipedia/commons/8/82/Telegram_logo.svg" },
+    { name: "VLC media player", icon: "https://upload.wikimedia.org/wikipedia/commons/d/d2/VLC_Icon.svg" },
+    { name: "WinRAR 6.11", icon: "https://upload.wikimedia.org/wikipedia/commons/a/a2/WinRAR_icon.svg" },
+    { name: "Zoom", icon: "https://upload.wikimedia.org/wikipedia/commons/2/24/Zoom-icon.png" }
   ];
+
+  const defaultIcon = "https://upload.wikimedia.org/wikipedia/commons/7/76/Windows_Calculator_icon.png";
 
   function renderAppsList() {
     const container = document.getElementById('apps-list');
     container.innerHTML = '';
     
-    programDatabase.forEach(appName => {
-      const isGimp = appName.includes("GIMP");
+    programDatabase.forEach(app => {
+      const isGimp = app.name.includes("GIMP");
       const row = document.createElement('div');
       row.className = 'app-row';
       row.id = isGimp ? 'gimp-app-row' : '';
       
-      // Однаковий стандартний дизайн для всіх кнопок без виділення кольором
       row.innerHTML = `
         <div class="app-info">
-          <img src="https://upload.wikimedia.org/wikipedia/commons/7/76/Windows_Calculator_icon.png">
+          <img src="${app.icon}" onerror="this.src='${defaultIcon}'" alt="Icon">
           <div class="app-details">
-            <strong>${appName}</strong>
+            <strong>${app.name}</strong>
             <span>Компонент системи • Встановлено</span>
           </div>
         </div>
         <div>
-          <button class="btn-standard" onclick="${isGimp ? 'openGimpUninstaller()' : "alert('Помилка: Не ту програму вибрано для видалення!')"}">Видалити</button>
+          <button class="btn-standard" onclick="${isGimp ? 'openGimpUninstaller()' : "alert('Помилка: Ви вибрали неправильну програму! Знайдіть у списку саме GIMP.')"}">Видалити</button>
         </div>
       `;
       container.appendChild(row);
@@ -601,7 +641,27 @@
   function openSettings() {
     document.getElementById('start-menu').classList.add('hidden');
     document.getElementById('settings-window').classList.remove('hidden');
-    renderAppsList();
+    // Початковий відкритий вкладка - Система
+    switchSettingsTab('system');
+  }
+
+  /* Перемикач вкладок у Налаштуваннях */
+  function switchSettingsTab(tab) {
+    // Знімаємо активний стан з усіх кнопок сайдбару
+    document.querySelectorAll('.sidebar-item').forEach(item => item.classList.remove('active'));
+    
+    // Приховуємо вміст усіх розділів
+    document.getElementById('settings-view-system').classList.add('hidden');
+    document.getElementById('settings-view-apps').classList.add('hidden');
+
+    if(tab === 'apps') {
+      document.getElementById('tab-btn-apps').classList.add('active');
+      document.getElementById('settings-view-apps').classList.remove('hidden');
+      renderAppsList(); // Рендеримо список програм тільки при виборі цієї вкладки
+    } else {
+      document.getElementById('tab-system').classList.add('active');
+      document.getElementById('settings-view-system').classList.remove('hidden');
+    }
   }
 
   function openGimpUninstaller() {
