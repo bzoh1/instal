@@ -1,0 +1,637 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Практична робота: Симулятор Windows 11 та GIMP</title>
+<style>
+  * { box-sizing: border-box; user-select: none; font-family: "Segoe UI Variable Text", "Segoe UI", Tahoma, Geneva, Verdana, sans-serif; }
+  body, html { margin: 0; padding: 0; width: 100vw; height: 100vh; overflow: hidden; background-color: #000; color: #fff; }
+  .hidden { display: none !important; }
+
+  /* --- ЕТАП 1: Інсталятор Windows 11 --- */
+  #win-installer {
+    width: 100vw; height: 100vh; background: #000;
+    display: flex; justify-content: center; align-items: center;
+  }
+  .win-window {
+    width: 720px; height: 540px; background-color: #171717; border: 1px solid #2c2c2c;
+    box-shadow: 0 20px 50px rgba(0,0,0,0.8); border-radius: 8px; display: flex; flex-direction: column;
+    justify-content: space-between; padding: 35px; position: relative; color: #ececec;
+  }
+  .win-logo-box {
+    width: 42px; height: 42px; display: grid; grid-template-columns: 1fr 1fr; gap: 3px; margin: 0 auto 15px auto;
+  }
+  .win-logo-box div { background-color: #0078d4; }
+  .win-title { font-size: 20px; font-weight: 600; margin-bottom: 20px; text-align: center; }
+  
+  .win-form-group { margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center; font-size: 13px; }
+  .win-form-group label { color: #cccccc; }
+  .win-form-group select, .win-form-group input[type="text"] {
+    width: 55%; padding: 6px 10px; background: #202020; color: #fff; border: 1px solid #3c3c3c; border-radius: 4px; outline: none;
+  }
+  
+  .win-btn-group { display: flex; justify-content: space-between; align-items: center; margin-top: 15px; }
+  .win-right-btns { display: flex; gap: 12px; }
+  .win-btn {
+    padding: 7px 24px; background-color: #0078d4; border: none; color: white;
+    border-radius: 4px; cursor: pointer; font-size: 13px; font-weight: 500; transition: 0.2s;
+  }
+  .win-btn:hover { background-color: #106ebe; }
+  .win-btn-secondary { background-color: #2c2c2c; color: #ccc; }
+  .win-btn-secondary:hover { background-color: #3a3a3a; }
+
+  .license-text {
+    background: #101010; border: 1px solid #2c2c2c; height: 250px; overflow-y: scroll;
+    padding: 15px; font-size: 12px; line-height: 1.6; color: #aaa; margin-bottom: 12px; border-radius: 4px;
+  }
+
+  /* Таблиця дисків */
+  .disk-table { width: 100%; border-collapse: collapse; font-size: 12px; margin-bottom: 15px; }
+  .disk-table th, .disk-table td { border: 1px solid #333; padding: 8px 12px; text-align: left; }
+  .disk-table th { background: #222; }
+  .disk-table tr.selected { background: #004578; color: #fff; }
+
+  /* --- ЕТАП 2 ТА 3: WINDOWS 11 DESKTOP --- */
+  #desktop {
+    width: 100vw; height: 100vh;
+    background: url('https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=1920&auto=format&fit=crop') center/cover no-repeat;
+    position: relative; display: flex; flex-direction: column; justify-content: space-between;
+  }
+  
+  .taskbar {
+    height: 48px; background: rgba(28, 28, 28, 0.75); backdrop-filter: blur(30px);
+    display: flex; justify-content: flex-start; align-items: center; position: absolute; bottom: 0; width: 100%;
+    border-top: 1px solid rgba(255,255,255,0.08); padding: 0 12px; z-index: 1000;
+  }
+  .taskbar-icons { display: flex; gap: 6px; }
+  .taskbar-icon {
+    width: 40px; height: 40px; display: flex; justify-content: center; align-items: center;
+    cursor: pointer; border-radius: 4px; transition: 0.1s;
+  }
+  .taskbar-icon:hover { background: rgba(255, 255, 255, 0.1); }
+
+  .desktop-icons { padding: 20px; display: flex; flex-direction: column; gap: 20px; width: 100px; }
+  .desktop-icon { width: 84px; text-align: center; color: white; text-shadow: 0 2px 4px rgba(0,0,0,0.9); cursor: pointer; font-size: 12px; padding: 8px 4px; border-radius: 4px; }
+  .desktop-icon:hover { background: rgba(255,255,255,0.15); }
+  .desktop-icon img { width: 44px; height: 44px; margin-bottom: 4px; }
+
+  /* Меню Пуск */
+  .start-menu {
+    width: 520px; height: 580px; background: rgba(32, 32, 32, 0.85); backdrop-filter: blur(40px);
+    position: absolute; bottom: 56px; left: 12px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.12);
+    padding: 25px; box-shadow: 0 15px 35px rgba(0,0,0,0.5); display: flex; flex-direction: column; gap: 20px; z-index: 999;
+  }
+  .start-search {
+    width: 100%; padding: 9px 15px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.15);
+    background: rgba(0,0,0,0.3); color: #fff; outline: none; font-size: 13px;
+  }
+  .start-section-title { font-size: 12px; font-weight: 600; color: #aaa; display: flex; justify-content: space-between; }
+  .start-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 12px; }
+  .start-app-item { display: flex; flex-direction: column; align-items: center; font-size: 11px; color: #ccc; cursor: pointer; padding: 8px 0; border-radius: 6px; }
+  .start-app-item:hover { background: rgba(255,255,255,0.08); color: #fff; }
+  .start-app-item img { width: 32px; height: 32px; margin-bottom: 6px; }
+
+  /* Параметри */
+  .settings-window {
+    width: 950px; height: 620px; background: #202020; color: #fff; position: absolute;
+    top: 45%; left: 50%; transform: translate(-50%, -50%); border-radius: 8px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.6); display: flex; overflow: hidden; border: 1px solid #383838; z-index: 500;
+  }
+  .settings-sidebar { width: 260px; background: #181818; border-right: 1px solid #2c2c2c; padding: 20px 12px; display: flex; flex-direction: column; gap: 4px; }
+  .settings-user { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; padding: 0 8px; }
+  .settings-avatar { width: 40px; height: 40px; border-radius: 50%; background: #0078d4; display: flex; justify-content: center; align-items: center; font-weight: bold; }
+  
+  .sidebar-item { padding: 10px 14px; font-size: 13px; border-radius: 5px; cursor: pointer; color: #ccc; display: flex; align-items: center; gap: 12px; }
+  .sidebar-item:hover { background: rgba(255,255,255,0.05); }
+  .sidebar-item.active { background: rgba(255,255,255,0.08); color: #fff; font-weight: 500; border-left: 3px solid #0078d4; }
+  
+  .settings-content { flex-grow: 1; padding: 30px 40px; overflow-y: auto; background: #202020; }
+  .apps-search-box { width: 100%; padding: 8px 12px; background: #181818; border: 1px solid #383838; border-radius: 4px; color: #fff; margin: 15px 0 20px 0; outline: none; }
+  
+  /* Стандартний вигляд кнопок для ВСІХ програм у списку */
+  .app-row {
+    display: flex; justify-content: space-between; align-items: center; padding: 12px 16px;
+    background: #2b2b2b; border: 1px solid #343434; border-radius: 6px; margin-bottom: 8px;
+  }
+  .app-row:hover { background: #323232; }
+  .app-info { display: flex; align-items: center; gap: 15px; }
+  .app-info img { width: 28px; height: 28px; }
+  .app-details strong { font-size: 13px; display: block; color: #eee; }
+  .app-details span { font-size: 11px; color: #999; }
+  .btn-standard { background: #3a3a3a; color: #ccc; border: 1px solid #555; padding: 6px 14px; border-radius: 4px; cursor: pointer; font-size: 12px; }
+  .btn-standard:hover { background: #4a4a4a; color: #fff; }
+
+  /* Інсталятор та деінсталятор GIMP */
+  .inno-window {
+    width: 530px; height: 390px; background: #f0f0f0; color: #000; border: 1px solid #a0a0a0;
+    position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+    box-shadow: 0 10px 30px rgba(0,0,0,0.4); border-radius: 6px; display: flex; flex-direction: column;
+    justify-content: space-between; z-index: 2000; overflow: hidden;
+  }
+  .inno-header-banner {
+    height: 60px; background: #fff; border-bottom: 1px solid #d0d0d0; padding: 10px 20px;
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .inno-header-text strong { display: block; font-size: 12px; color: #000; }
+  .inno-header-text span { font-size: 11px; color: #555; }
+  .inno-body { padding: 20px; flex-grow: 1; font-size: 12px; color: #222; background: #f0f0f0; overflow-y: auto; }
+  .inno-footer { height: 50px; background: #f0f0f0; border-top: 1px solid #d0d0d0; padding: 0 15px; display: flex; justify-content: flex-end; align-items: center; gap: 8px; }
+  .inno-btn { padding: 5px 18px; background: #e1e1e1; border: 1px solid #adadad; cursor: pointer; font-size: 12px; border-radius: 2px; }
+  .inno-btn:hover { background: #e5f1fb; border-color: #0078d4; }
+
+  .progress-bar { width: 100%; background: #444; height: 12px; border-radius: 6px; overflow: hidden; margin-top: 15px; }
+  .progress-fill { width: 0%; height: 100%; background: #0078d4; transition: width 0.2s; }
+
+  /* Фінальне модальне вікно */
+  .modal-overlay {
+    position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.85);
+    display: flex; justify-content: center; align-items: center; z-index: 10000;
+  }
+  .modal-card {
+    background: #1f1f1f; border: 1px solid #0078d4; border-radius: 8px; padding: 30px; text-align: center;
+    max-width: 450px; box-shadow: 0 10px 30px rgba(0,120,212,0.4); color: #fff;
+  }
+</style>
+</head>
+<body>
+
+<!-- ЕТАП 1: ВСТАНОВЛЕННЯ WINDOWS 11 -->
+<div id="win-installer">
+  
+  <!-- Крок 1.1: Мова -->
+  <div id="win-step-1" class="win-window">
+    <div>
+      <div class="win-logo-box"><div></div><div></div><div></div><div></div></div>
+      <div class="win-title">Встановлення Windows 11</div>
+      <div class="win-form-group"><label>Мова інсталяції:</label><select><option>Українська</option></select></div>
+      <div class="win-form-group"><label>Формат часу та грошових одиниць:</label><select><option>Українська (Україна)</option></select></div>
+      <div class="win-form-group"><label>Клавіатура або метод введення:</label><select><option>Українська</option></select></div>
+    </div>
+    <div class="win-btn-group">
+      <div></div>
+      <div class="win-right-btns"><button class="win-btn" onclick="nextWinStep(2)">Далі</button></div>
+    </div>
+  </div>
+
+  <!-- Крок 1.2: Інсталювати зараз -->
+  <div id="win-step-2" class="win-window hidden" style="justify-content: center; align-items: center;">
+    <div class="win-logo-box"><div></div><div></div><div></div><div></div></div>
+    <button class="win-btn" style="padding: 12px 36px; font-size: 15px; margin-bottom: 20px;" onclick="nextWinStep(3)">Інсталювати зараз</button>
+    <div style="font-size: 11px; color: #888;">Початок інсталяції...</div>
+    <div class="win-btn-group" style="width: 100%;">
+      <button class="win-btn win-btn-secondary" onclick="nextWinStep(1)">Назад</button>
+    </div>
+  </div>
+
+  <!-- Крок 1.3: Ключ продукту -->
+  <div id="win-step-3" class="win-window hidden">
+    <div>
+      <div class="win-title" style="text-align:left;">Активація Windows</div>
+      <p style="font-size:12px; color:#aaa; margin-bottom:20px;">Введіть ключ продукту. Якщо ви повторно інсталюєте Windows, виберіть "У мене немає ключа продукту".</p>
+      <div class="win-form-group"><label>Ключ продукту:</label><input type="text" id="win-key" placeholder="XXXXX-XXXXX-XXXXX-XXXXX-XXXXX"></div>
+    </div>
+    <div class="win-btn-group">
+      <button class="win-btn win-btn-secondary" onclick="nextWinStep(2)">Назад</button>
+      <div class="win-right-btns">
+        <button class="win-btn win-btn-secondary" onclick="nextWinStep(4)">У мене немає ключа продукту</button>
+        <button class="win-btn" onclick="validateKey()">Далі</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Крок 1.4: Вибір редакції -->
+  <div id="win-step-4" class="win-window hidden">
+    <div>
+      <div class="win-title" style="text-align:left;">Виберіть операційну систему</div>
+      <select id="win-edition" size="5" style="width:100%; background:#111; color:#fff; border:1px solid #333; padding:5px; font-size:12px;">
+        <option selected>Windows 11 Home (Домашня)</option>
+        <option>Windows 11 Home Single Language</option>
+        <option>Windows 11 Education (Навчальна)</option>
+        <option>Windows 11 Pro (Професійна)</option>
+      </select>
+    </div>
+    <div class="win-btn-group">
+      <button class="win-btn win-btn-secondary" onclick="nextWinStep(3)">Назад</button>
+      <div class="win-right-btns"><button class="win-btn" onclick="nextWinStep(5)">Далі</button></div>
+    </div>
+  </div>
+
+  <!-- Крок 1.5: Ліцензія -->
+  <div id="win-step-5" class="win-window hidden">
+    <div>
+      <div class="win-title" style="text-align:left;">Застосовні повідомлення та умови ліцензії</div>
+      <div class="license-text">
+        ОБМЕЖЕНА ЛІЦЕНЗІЯ НА ПРОГРАМНЕ ЗАБЕЗПЕЧЕННЯ MICROSOFT WINDOWS OPERATING SYSTEM...<br><br>
+        1. Права на інсталяцію та використання.<br>
+        2. Збирання даних та конфіденційність.<br>
+        3. Оновлення та підключення до мережі Інтернет.
+      </div>
+      <label style="font-size:12px; color:#ccc; display:flex; align-items:center; gap:8px;">
+        <input type="checkbox" id="lic-check"> Я приймаю умови ліцензійного договору про використання ПЗ Microsoft.
+      </label>
+    </div>
+    <div class="win-btn-group">
+      <button class="win-btn win-btn-secondary" onclick="nextWinStep(4)">Назад</button>
+      <div class="win-right-btns"><button class="win-btn" onclick="checkLicense()">Далі</button></div>
+    </div>
+  </div>
+
+  <!-- Крок 1.6: Вибір типу інсталяції -->
+  <div id="win-step-6" class="win-window hidden">
+    <div>
+      <div class="win-title" style="text-align:left;">Виберіть тип інсталяції</div>
+      <div style="display:flex; flex-direction:column; gap:12px; margin-top:20px;">
+        <button class="win-btn win-btn-secondary" style="text-align:left; padding:15px;" onclick="failStep1('Помилка! Вибір «Оновлення» неможливий для чистої інсталяції системи. Необхідно вибирати кастомну/вибіркову інсталяцію.')">
+          <strong>Оновлення: інсталяція Windows із збереженням файлів</strong><br>
+          <span style="font-size:11px; color:#888;">Файли, параметри та програми переносяться до цієї версії Windows.</span>
+        </button>
+        <button class="win-btn win-btn-secondary" style="text-align:left; padding:15px;" onclick="nextWinStep(7)">
+          <strong>Вибіркова: лише інсталяція Windows (для досвідчених)</strong><br>
+          <span style="font-size:11px; color:#888;">Файли, параметри та програми не переносяться. Встановлення чистої OS.</span>
+        </button>
+      </div>
+    </div>
+    <div class="win-btn-group">
+      <button class="win-btn win-btn-secondary" onclick="nextWinStep(5)">Назад</button>
+    </div>
+  </div>
+
+  <!-- Крок 1.7: Диски з логікою видалення та об'єднання -->
+  <div id="win-step-7" class="win-window hidden">
+    <div>
+      <div class="win-title" style="text-align:left;">Де ви бажаєте інсталювати Windows?</div>
+      <table class="disk-table">
+        <thead><tr><th>Назва</th><th>Загальний розмір</th><th>Вільний простір</th><th>Тип</th></tr></thead>
+        <tbody id="disk-table-body">
+          <tr onclick="selectDisk(this, 'sys')"><td>Диск 0 Розділ 1: System</td><td>512.0 МБ</td><td>480.0 МБ</td><td>Система</td></tr>
+          <tr onclick="selectDisk(this, 'msr')"><td>Диск 0 Розділ 2: MSR</td><td>16.0 МБ</td><td>16.0 МБ</td><td>Зарезервовано</td></tr>
+          <tr class="selected" onclick="selectDisk(this, 'main')"><td>Диск 0 Розділ 3 (C:)</td><td>240.5 ГБ</td><td>180.2 ГБ</td><td>Основний</td></tr>
+        </tbody>
+      </table>
+      <div style="display:flex; gap:10px; font-size:11px;">
+        <button class="win-btn win-btn-secondary" onclick="deleteSelectedDisk()">Видалити</button>
+        <button class="win-btn win-btn-secondary" onclick="alert('Розділ відформатовано')">Форматувати</button>
+        <button class="win-btn win-btn-secondary" onclick="alert('Для чистого встановлення оберіть незайнятий простір')">Створити</button>
+      </div>
+    </div>
+    <div class="win-btn-group">
+      <button class="win-btn win-btn-secondary" onclick="nextWinStep(6)">Назад</button>
+      <div class="win-right-btns"><button class="win-btn" onclick="validateDiskSelection()">Далі</button></div>
+    </div>
+  </div>
+
+  <!-- Крок 1.8: Прогрес встановлення -->
+  <div id="win-step-8" class="win-window hidden" style="justify-center;">
+    <div class="win-title">Встановлення Windows</div>
+    <div style="font-size: 13px; line-height: 2.2; color:#ccc; margin: 20px 0;">
+      ✔ Копіювання файлів Windows<br>
+      ⏳ Підготовка файлів для інсталяції (<span id="win-progress-text">0</span>%)<br>
+      ⚪ Инсталяція компонентів<br>
+      ⚪ Встановлення оновлень<br>
+      ⚪ Завершення
+    </div>
+    <div class="progress-bar"><div id="win-progress" class="progress-fill"></div></div>
+  </div>
+</div>
+
+<!-- ЕТАП 2 ТА 3: WINDOWS 11 DESKTOP -->
+<div id="desktop" class="hidden">
+  
+  <div class="desktop-icons">
+    <div class="desktop-icon" ondblclick="openGimpInstaller()">
+      <img src="https://upload.wikimedia.org/wikipedia/commons/4/45/The_GIMP_icon_-_Executable_Uninstall.png" alt="GIMP Setup">
+      <div>gimp-2.10-setup.exe</div>
+    </div>
+  </div>
+
+  <!-- ВІКНО ІНСТАЛЯТОРА GIMP -->
+  <div id="gimp-installer" class="inno-window hidden">
+    <div class="inno-header-banner">
+      <div class="inno-header-text">
+        <strong>Інсталяція — GIMP</strong>
+        <span>Майстер встановлення растрового графічного редактора</span>
+      </div>
+      <img src="https://upload.wikimedia.org/wikipedia/commons/4/45/The_GIMP_icon_-_Executable_Uninstall.png" width="36">
+    </div>
+    
+    <div class="inno-body" id="gimp-body"></div>
+
+    <div class="inno-footer">
+      <button class="inno-btn" onclick="cancelGimpInstall()">Скасувати</button>
+      <button class="inno-btn" id="gimp-back-btn" onclick="prevGimpStep()" disabled>Назад</button>
+      <button class="inno-btn" id="gimp-next-btn" onclick="nextGimpStep()">Далі ></button>
+    </div>
+  </div>
+
+  <!-- ВІКНО ДЕІНСТАЛЯТОРА GIMP -->
+  <div id="gimp-uninstaller" class="inno-window hidden">
+    <div class="inno-header-banner">
+      <div class="inno-header-text">
+        <strong>Видалення GIMP 2.10</strong>
+        <span>Видалення програмного забезпечення з комп'ютера</span>
+      </div>
+      <img src="https://upload.wikimedia.org/wikipedia/commons/4/45/The_GIMP_icon_-_Executable_Uninstall.png" width="36">
+    </div>
+    <div class="inno-body" id="uninst-body">
+      <p>Ви дійсно бажаєте повністю видалити GIMP та всі його компоненти?</p>
+      <label style="display:block; margin-top:15px;"><input type="checkbox" id="uninst-cfg"> Видалити також особисті налаштування та конфігурацію користувача</label>
+    </div>
+    <div class="inno-footer">
+      <button class="inno-btn" onclick="closeUninstaller()">Скасувати</button>
+      <button class="inno-btn" onclick="runGimpUninstall()">Видалити</button>
+    </div>
+  </div>
+
+  <!-- МЕНЮ ПУСК (ЗЛІВА) -->
+  <div id="start-menu" class="start-menu hidden">
+    <input type="text" class="start-search" placeholder="Введіть текст для пошуку...">
+    <div class="start-section-title"><span>Закріплені</span></div>
+    <div class="start-grid">
+      <div class="app-item start-app-item" onclick="openSettings()">
+        <img src="https://upload.wikimedia.org/wikipedia/commons/a/a2/Windows_11_Settings_icon.svg">
+        <span>Налаштування</span>
+      </div>
+      <div class="app-item start-app-item"><img src="https://upload.wikimedia.org/wikipedia/commons/e/e1/Microsoft_Edge_Logo_2019.svg"><span>Edge</span></div>
+      <div class="app-item start-app-item"><img src="https://upload.wikimedia.org/wikipedia/commons/f/fc/Microsoft_Excel_2013-2019_logo.svg"><span>Excel</span></div>
+      <div class="app-item start-app-item"><img src="https://upload.wikimedia.org/wikipedia/commons/f/fd/Microsoft_Office_Word_%282019%E2%80%93present%29.svg"><span>Word</span></div>
+      <div class="app-item start-app-item"><img src="https://upload.wikimedia.org/wikipedia/commons/0/0c/File_Explorer_Win11.svg"><span>Провідник</span></div>
+      <div class="app-item start-app-item"><img src="https://upload.wikimedia.org/wikipedia/commons/7/76/Windows_Calculator_icon.png"><span>Калькулятор</span></div>
+    </div>
+  </div>
+
+  <!-- НАЛАШТУВАННЯ (ПАРАМЕТРИ) -->
+  <div id="settings-window" class="settings-window hidden">
+    <div class="settings-sidebar">
+      <div class="settings-user">
+        <div class="settings-avatar">Учень</div>
+        <div><strong style="font-size:13px;">Учень 9-го класу</strong><br><span style="font-size:11px; color:#888;">Локальний запис</span></div>
+      </div>
+      <div class="sidebar-item">🖥️ Система</div>
+      <div class="sidebar-item">🎧 Пристрої</div>
+      <div class="sidebar-item">🌐 Мережа та Інтернет</div>
+      <div class="sidebar-item">🎨 Персоналізація</div>
+      <div class="sidebar-item active" id="tab-btn-apps">📦 Програми</div>
+      <div class="sidebar-item">👤 Облікові записи</div>
+      <div class="sidebar-item">🕒 Час та мова</div>
+      <div class="sidebar-item">🎮 Ігри</div>
+      <div class="sidebar-item">🔒 Безпека</div>
+    </div>
+
+    <div class="settings-content">
+      <h2 style="font-size:22px; font-weight:500; margin:0;">Встановлені програми</h2>
+      <input type="text" class="apps-search-box" placeholder="Шукати програму у списку..." onkeyup="filterApps(this.value)">
+      <div id="apps-list"></div>
+    </div>
+  </div>
+
+  <!-- ПАНЕЛЬ ЗАВДАНЬ -->
+  <div class="taskbar">
+    <div class="taskbar-icons">
+      <div class="taskbar-icon" onclick="toggleStartMenu()">
+        <img src="https://upload.wikimedia.org/wikipedia/commons/8/87/Windows_logo_-_2021.svg" width="18">
+      </div>
+      <div class="taskbar-icon" onclick="openSettings()">
+        <img src="https://upload.wikimedia.org/wikipedia/commons/a/a2/Windows_11_Settings_icon.svg" width="20">
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ФІНАЛЬНЕ ВІКНО УСПІХУ -->
+<div id="final-modal" class="modal-overlay hidden">
+  <div class="modal-card">
+    <h2 style="color:#00adef; margin-top:0;">Вітаємо!</h2>
+    <p style="font-size:15px; line-height:1.6;">Усі 3 етапи практичного завдання успішно виконані:</p>
+    <div style="text-align:left; font-size:13px; line-height:2; margin:20px 0;">
+      ✔ Етап 1: Інсталяція Windows 11 пройшла успішно.<br>
+      ✔ Етап 2: Програму GIMP інстальовано.<br>
+      ✔ Етап 3: GIMP знайдено та видалено через Налаштування.
+    </div>
+    <button class="win-btn" onclick="location.reload()">Пройти знову</button>
+  </div>
+</div>
+
+<script>
+  /* --- ЛОГІКА ПОМИЛОК ТА СКИДАННЯ --- */
+  function failStep1(msg) {
+    alert("ПОМИЛКА: " + msg + "\n\nВас перенаправлено на початок Етапу 1.");
+    nextWinStep(1);
+  }
+
+  /* --- ЕТАП 1: WINDOWS 11 --- */
+  function nextWinStep(step) {
+    document.querySelectorAll('#win-installer > div').forEach(div => div.classList.add('hidden'));
+    document.getElementById(`win-step-${step}`).classList.remove('hidden');
+  }
+
+  function validateKey() {
+    let val = document.getElementById('win-key').value;
+    if(val.length > 5) nextWinStep(4);
+    else alert("Введіть ключ або виберіть 'У мене немає ключа продукту'");
+  }
+
+  function checkLicense() {
+    if(document.getElementById('lic-check').checked) {
+      nextWinStep(6);
+    } else {
+      failStep1("Ви не прийняли ліцензійні умови.");
+    }
+  }
+
+  /* Логіка роботи з дисками */
+  let selectedDiskType = 'main';
+  let hasDeletedDisks = false;
+
+  function selectDisk(el, type) {
+    document.querySelectorAll('.disk-table tr').forEach(tr => tr.classList.remove('selected'));
+    el.classList.add('selected');
+    selectedDiskType = type;
+  }
+
+  function deleteSelectedDisk() {
+    const body = document.getElementById('disk-table-body');
+    hasDeletedDisks = true;
+    body.innerHTML = `
+      <tr class="selected" onclick="selectDisk(this, 'free')">
+        <td>Диск 0 Незайнятий простір</td>
+        <td>476.0 ГБ</td>
+        <td>476.0 ГБ</td>
+        <td>Незайнятий простір</td>
+      </tr>
+    `;
+    selectedDiskType = 'free';
+  }
+
+  function validateDiskSelection() {
+    if(!hasDeletedDisks && selectedDiskType !== 'free') {
+      failStep1("Для чистої інсталяції потрібно видалити старі розділи або вибрати незайнятий простір!");
+    } else {
+      startWinInstall();
+    }
+  }
+
+  function startWinInstall() {
+    nextWinStep(8);
+    let p = 0;
+    let interval = setInterval(() => {
+      p += 10;
+      document.getElementById('win-progress').style.width = p + '%';
+      document.getElementById('win-progress-text').innerText = p;
+      if(p >= 100) {
+        clearInterval(interval);
+        setTimeout(() => {
+          document.getElementById('win-installer').classList.add('hidden');
+          document.getElementById('desktop').classList.remove('hidden');
+          alert("Етап 1 пройдено!\n\nЗапустіть gimp-2.10-setup.exe на робочому столі для проходження Етапу 2.");
+        }, 800);
+      }
+    }, 250);
+  }
+
+  /* --- ЕТАП 2: GIMP --- */
+  let gimpStep = 1;
+
+  function openGimpInstaller() {
+    gimpStep = 1;
+    renderGimpStep();
+    document.getElementById('gimp-installer').classList.remove('hidden');
+  }
+
+  function renderGimpStep() {
+    let body = document.getElementById('gimp-body');
+    let nextBtn = document.getElementById('gimp-next-btn');
+    let backBtn = document.getElementById('gimp-back-btn');
+    backBtn.disabled = (gimpStep === 1);
+
+    if(gimpStep === 1) {
+      body.innerHTML = `<p>Вас вітає майстер інсталяції GIMP 2.10.32.</p><p>Натисніть "Далі" для вибору параметрів.</p>`;
+      nextBtn.innerText = "Далі >";
+    } else if(gimpStep === 2) {
+      body.innerHTML = `<p>Папка для інсталяції:</p><input type="text" value="C:\\Program Files\\GIMP 2" style="width:100%; padding:4px;" readonly>`;
+      nextBtn.innerText = "Далі >";
+    } else if(gimpStep === 3) {
+      body.innerHTML = `<p>Виберіть компоненти:</p><div><input type="checkbox" checked disabled> Основна програма GIMP</div><div><input type="checkbox" checked> Компоненти перекладу</div>`;
+      nextBtn.innerText = "Інсталювати";
+    } else if(gimpStep === 4) {
+      body.innerHTML = `<p>Встановлення GIMP...</p><div class="progress-bar"><div id="gimp-progress" class="progress-fill"></div></div>`;
+      nextBtn.disabled = true;
+      backBtn.disabled = true;
+      let p = 0;
+      let interval = setInterval(() => {
+        p += 20;
+        document.getElementById('gimp-progress').style.width = p + '%';
+        if(p >= 100) {
+          clearInterval(interval);
+          body.innerHTML = "<p>GIMP успішно інстальовано!</p>";
+          nextBtn.innerText = "Завершити";
+          nextBtn.disabled = false;
+          nextBtn.onclick = finishGimpInstall;
+        }
+      }, 300);
+    }
+  }
+
+  function nextGimpStep() {
+    if(gimpStep < 4) { gimpStep++; renderGimpStep(); }
+  }
+
+  function prevGimpStep() {
+    if(gimpStep > 1) { gimpStep--; renderGimpStep(); }
+  }
+
+  function cancelGimpInstall() {
+    document.getElementById('gimp-installer').classList.add('hidden');
+  }
+
+  function finishGimpInstall() {
+    document.getElementById('gimp-installer').classList.add('hidden');
+    alert("Етап 2 пройдено!\n\nТепер перейдіть у Налаштування (через Пуск) -> Програми -> Знайдіть у переліку GIMP і видаліть його.");
+  }
+
+  /* --- ЕТАП 3: НАЛАШТУВАННЯ ТА ВИДАЛЕННЯ --- */
+  const programDatabase = [
+    "7-Zip 22.01 (x64)", "Adobe Acrobat Reader DC", "AnyDesk", "Audacity 3.2.1", "AutoHotkey 1.1",
+    "Blender 3.4", "CCleaner", "Cisco Packet Tracer", "CPU-Z 2.03", "Discord",
+    "Figma", "FileZilla Client", "GIMP 2.10.32", "Google Chrome", "Inkscape 1.2",
+    "Java 8 Update 351", "K-Lite Codec Pack", "LibreOffice 7.4", "Microsoft Edge", "Microsoft Visual Studio Code",
+    "Mozilla Firefox", "OBS Studio", "Opera Browser", "Paint.NET", "Python 3.11.0",
+    "Skype", "Spotify", "Steam", "Telegram Desktop", "VLC media player", "WinRAR 6.11", "Zoom"
+  ];
+
+  function renderAppsList() {
+    const container = document.getElementById('apps-list');
+    container.innerHTML = '';
+    
+    programDatabase.forEach(appName => {
+      const isGimp = appName.includes("GIMP");
+      const row = document.createElement('div');
+      row.className = 'app-row';
+      row.id = isGimp ? 'gimp-app-row' : '';
+      
+      // Однаковий стандартний дизайн для всіх кнопок без виділення кольором
+      row.innerHTML = `
+        <div class="app-info">
+          <img src="https://upload.wikimedia.org/wikipedia/commons/7/76/Windows_Calculator_icon.png">
+          <div class="app-details">
+            <strong>${appName}</strong>
+            <span>Компонент системи • Встановлено</span>
+          </div>
+        </div>
+        <div>
+          <button class="btn-standard" onclick="${isGimp ? 'openGimpUninstaller()' : "alert('Помилка: Не ту програму вибрано для видалення!')"}">Видалити</button>
+        </div>
+      `;
+      container.appendChild(row);
+    });
+  }
+
+  function filterApps(query) {
+    const rows = document.querySelectorAll('.app-row');
+    rows.forEach(row => {
+      const text = row.querySelector('strong').innerText.toLowerCase();
+      row.style.display = text.includes(query.toLowerCase()) ? 'flex' : 'none';
+    });
+  }
+
+  function toggleStartMenu() {
+    document.getElementById('start-menu').classList.toggle('hidden');
+  }
+
+  function openSettings() {
+    document.getElementById('start-menu').classList.add('hidden');
+    document.getElementById('settings-window').classList.remove('hidden');
+    renderAppsList();
+  }
+
+  function openGimpUninstaller() {
+    document.getElementById('gimp-uninstaller').classList.remove('hidden');
+  }
+
+  function closeUninstaller() {
+    document.getElementById('gimp-uninstaller').classList.add('hidden');
+  }
+
+  function runGimpUninstall() {
+    const body = document.getElementById('uninst-body');
+    body.innerHTML = `<p>Виконується видалення GIMP 2.10...</p><div class="progress-bar"><div id="un-progress" class="progress-fill"></div></div>`;
+    
+    let p = 0;
+    let interval = setInterval(() => {
+      p += 25;
+      document.getElementById('un-progress').style.width = p + '%';
+      if(p >= 100) {
+        clearInterval(interval);
+        closeUninstaller();
+        const gimpRow = document.getElementById('gimp-app-row');
+        if(gimpRow) gimpRow.remove();
+        
+        // Показ підсумкового фінального вікна
+        document.getElementById('final-modal').classList.remove('hidden');
+      }
+    }, 250);
+  }
+</script>
+
+</body>
+</html>
