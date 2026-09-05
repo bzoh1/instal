@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Тренажер клавіатурної навігації (6 кроків)</title>
+    <style>
+        /* Повне блокування миші для всієї сторінки */
+        * {
+            pointer-events: none !important;
+            cursor: not-allowed !important;
+            user-select: none;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f0f2f5;
+            color: #1c1e21;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        .card {
+            background: #ffffff;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+            max-width: 550px;
+            width: 100%;
+            text-align: center;
+        }
+
+        .page {
+            display: none;
+        }
+
+        .page.active {
+            display: block;
+        }
+
+        button, a, input, select {
+            padding: 10px 16px;
+            font-size: 16px;
+            border: 2px solid #0066cc;
+            background-color: #0066cc;
+            color: white;
+            border-radius: 6px;
+            margin: 8px 4px;
+            text-decoration: none;
+            display: inline-block;
+            box-sizing: border-box;
+        }
+
+        input[type="text"] {
+            background-color: #ffffff;
+            color: #000000;
+            border: 2px solid #555;
+            width: 80%;
+        }
+
+        input[type="checkbox"], input[type="radio"] {
+            width: 18px;
+            height: 18px;
+            vertical-align: middle;
+            margin-right: 8px;
+        }
+
+        .radio-label {
+            display: block;
+            text-align: left;
+            margin: 8px auto;
+            width: 85%;
+            font-size: 15px;
+            color: #333;
+            padding: 6px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            background: #f9f9f9;
+        }
+
+        /* Виразний фокус для ВСІХ елементів (клавіша Tab) */
+        button:focus, a:focus, input:focus, select:focus, .radio-label:has(input:focus) {
+            outline: 4px solid #ff9800 !important;
+            outline-offset: 3px;
+        }
+
+        button:focus {
+            background-color: #004080;
+        }
+
+        .info-box {
+            background-color: #e7f3ff;
+            border-left: 5px solid #1877f2;
+            padding: 12px;
+            text-align: left;
+            margin-bottom: 20px;
+            font-size: 14px;
+            line-height: 1.4;
+        }
+
+        .error-msg {
+            color: #d93025;
+            font-weight: bold;
+            display: none;
+            margin-top: 10px;
+            font-size: 14px;
+        }
+
+        .progress {
+            font-size: 13px;
+            font-weight: bold;
+            color: #0066cc;
+            margin-bottom: 15px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .nav-list {
+            list-style: none;
+            padding: 0;
+        }
+
+        .nav-list li {
+            margin: 6px 0;
+        }
+    </style>
+</head>
+<body>
+
+<div class="card">
+
+    <!-- Крок 1 -->
+    <div id="page1" class="page active">
+        <div class="progress">Крок 1 із 6</div>
+        <h2>Вхід у тренажер</h2>
+        <div class="info-box">
+            ⚠️ <strong>Миша вимкнена!</strong> Використовуйте <code>Tab</code> для переходу, <code>Пробіл</code> для позначки та <code>Enter</code> для підтвердження.
+        </div>
+        <p>Натисніть <code>Tab</code>, щоб виділити кнопку, і натисніть <code>Enter</code>.</p>
+        <button onclick="nextPage(2)" id="btn1">Розпочати квест</button>
+    </div>
+
+    <!-- Крок 2 -->
+    <div id="page2" class="page">
+        <div class="progress">Крок 2 із 6</div>
+        <h2>Пошук вірного шляху</h2>
+        <p>Пройдіть клавішею <code>Tab</code> через тупикові посилання до кнопки продовження.</p>
+        <ul class="nav-list">
+            <li><a href="#" onclick="alert('Це тупик! Тисніть Tab далі.'); return false;">Тупик №1</a></li>
+            <li><a href="#" onclick="alert('Знову тупик!'); return false;">Тупик №2</a></li>
+            <li><button onclick="nextPage(3)">Перейти далі</button></li>
+            <li><a href="#" onclick="alert('Це хибне посилання!'); return false;">Тупик №3</a></li>
+        </ul>
+    </div>
+
+    <!-- Крок 3 -->
+    <div id="page3" class="page">
+        <div class="progress">Крок 3 із 6</div>
+        <h2>Ідентифікація користувача</h2>
+        <p>Введіть ваше ім'я у поле нижче (обов'язково):</p>
+        <input type="text" id="userName" placeholder="Ваше ім'я..."><br>
+        <div id="errorStep3" class="error-msg">⚠️ Поле порожнє! Введіть ім'я, щоб продовжити.</div>
+        <br>
+        <button onclick="validateStep3()">Зберегти та далі</button>
+    </div>
+
+    <!-- Крок 4 -->
+    <div id="page4" class="page">
+        <div class="progress">Крок 4 із 6</div>
+        <h2>Вибір варіанта (Радіокнопки)</h2>
+        <p>Перемикайтеся стрілками клавіатури. Що робить вебсайт доступним?</p>
+        <div>
+            <label class="radio-label">
+                <input type="radio" name="tech" value="1"> Дрібний сірий текст на білому тлі
+            </label>
+            <label class="radio-label">
+                <input type="radio" name="tech" value="2" id="correctRadio"> Чіткий контраст та підтримка Tab-навігації
+            </label>
+            <label class="radio-label">
+                <input type="radio" name="tech" value="3"> Відсутність виділення фокусу
+            </label>
+        </div>
+        <div id="errorStep4" class="error-msg">⚠️ Оберіть правильний (другий) варіант!</div>
+        <br>
+        <button onclick="validateStep4()">Підтвердити вибір</button>
+    </div>
+
+    <!-- Крок 5 -->
+    <div id="page5" class="page">
+        <div class="progress">Крок 5 із 6</div>
+        <h2>Підтвердження (Прапорець)</h2>
+        <p>Перейдіть до чекбокса клавішею <code>Tab</code> та встановіть галочку натиснувши <code>Пробіл</code>:</p>
+        <label class="radio-label" style="text-align: center;">
+            <input type="checkbox" id="agreeCheck"> Я підтверджую, що виконую завдання без миші
+        </label>
+        <div id="errorStep5" class="error-msg">⚠️ Поставте прапорець клавішею Пробіл!</div>
+        <br>
+        <button onclick="validateStep5()">Перейти далі</button>
+    </div>
+
+    <!-- Крок 6 -->
+    <div id="page6" class="page">
+        <div class="progress">Крок 6 із 6</div>
+        <h2>Фінальна дія</h2>
+        <p>Знайдіть серед кнопок точну назву «Завершити квест» та натисніть <code>Enter</code>.</p>
+        <button onclick="alert('Неправильна кнопка!')">Скасувати</button>
+        <button onclick="alert('Це кнопка довідки!')">Довідка</button>
+        <button onclick="nextPage(7)">Завершити квест</button>
+    </div>
+
+    <!-- Фінал (Крок 7) -->
+    <div id="page7" class="page">
+        <h2>🎉 Вітаємо, <span id="studentNameDisplay"></span>!</h2>
+        <p>Ви успішно пройшли всі 6 кроків <strong>без використання миші</strong>!</p>
+        <div class="info-box">
+            <strong>Висновки для обговорення на уроці:</strong>
+            1. Заповнення форм без миші вимагає обов'язкової фокусації на кожному полі.<br>
+            2. Без рамки фокусу (`outline`) або при відсутності перевірки помилок користувач повністю втрачає орієнтацію на сторінці.
+        </div>
+        <button onclick="location.reload()">Пройти знову</button>
+    </div>
+
+</div>
+
+<script>
+    let userNameValue = "";
+
+    function nextPage(pageNum) {
+        document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+        const next = document.getElementById('page' + pageNum);
+        next.classList.add('active');
+        
+        // Автоматично фокусуємося на першому інтерактивному елементі
+        setTimeout(() => {
+            const focusable = next.querySelector('button, input, a');
+            if (focusable) focusable.focus();
+        }, 50);
+    }
+
+    /* Перевірка Кроку 3 (Введення імені) */
+    function validateStep3() {
+        const input = document.getElementById('userName');
+        const err = document.getElementById('errorStep3');
+        if (!input.value.trim()) {
+            err.style.display = 'block';
+            input.focus();
+        } else {
+            err.style.display = 'none';
+            userNameValue = input.value.trim();
+            document.getElementById('studentNameDisplay').innerText = userNameValue;
+            nextPage(4);
+        }
+    }
+
+    /* Перевірка Кроку 4 (Радіокнопка) */
+    function validateStep4() {
+        const correct = document.getElementById('correctRadio');
+        const err = document.getElementById('errorStep4');
+        if (correct.checked) {
+            err.style.display = 'none';
+            nextPage(5);
+        } else {
+            err.style.display = 'block';
+        }
+    }
+
+    /* Перевірка Кроку 5 (Чекбокс) */
+    function validateStep5() {
+        const check = document.getElementById('agreeCheck');
+        const err = document.getElementById('errorStep5');
+        if (check.checked) {
+            err.style.display = 'none';
+            nextPage(6);
+        } else {
+            err.style.display = 'block';
+            check.focus();
+        }
+    }
+
+    window.onload = () => document.getElementById('btn1').focus();
+</script>
+
+</body>
+</html>
