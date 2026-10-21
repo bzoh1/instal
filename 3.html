@@ -37,9 +37,13 @@
             background: #cbd5e1;
             border-radius: 4px;
         }
+        /* Підтримка Safe Area для мобільних пристроїв */
+        .pb-safe {
+            padding-bottom: max(1rem, env(safe-area-inset-bottom));
+        }
     </style>
 </head>
-<body class="bg-slate-100 text-slate-800 font-sans min-h-screen flex flex-col justify-between select-none pb-14 sm:pb-0">
+<body class="bg-slate-100 text-slate-800 font-sans min-h-screen flex flex-col justify-between select-none pb-24 sm:pb-0">
 
     <!-- Верхня панель (Header) -->
     <header class="bg-gradient-to-r from-teal-600 to-emerald-600 text-white p-4 shadow-md sticky top-0 z-50">
@@ -272,19 +276,19 @@
     </main>
 
     <!-- Нижня панель навігації (Bottom Navigation) -->
-    <nav class="bg-white border-t border-slate-200 p-2 fixed bottom-0 left-0 right-0 z-50">
-        <div class="max-w-md mx-auto grid grid-cols-3 gap-1">
-            <button id="nav-select" onclick="switchTab('select')" class="flex flex-col items-center py-1.5 text-teal-600 font-medium text-xs transition">
-                <i class="fa-solid fa-list-check text-lg mb-0.5"></i>
-                Вибір
+    <nav class="bg-white border-t border-slate-200 fixed bottom-0 left-0 right-0 z-[100] pb-safe shadow-lg">
+        <div class="max-w-md mx-auto grid grid-cols-3 gap-1 p-2">
+            <button id="nav-select" onclick="switchTab('select')" class="flex flex-col items-center justify-center py-2 px-1 text-teal-600 font-medium text-xs transition active:bg-slate-100 rounded-xl touch-manipulation">
+                <i class="fa-solid fa-list-check text-lg mb-1 pointer-events-none"></i>
+                <span class="pointer-events-none">Вибір</span>
             </button>
-            <button id="nav-cards" onclick="switchTab('cards')" class="flex flex-col items-center py-1.5 text-slate-400 font-medium text-xs transition">
-                <i class="fa-solid fa-clone text-lg mb-0.5"></i>
-                Картки
+            <button id="nav-cards" onclick="switchTab('cards')" class="flex flex-col items-center justify-center py-2 px-1 text-slate-400 font-medium text-xs transition active:bg-slate-100 rounded-xl touch-manipulation">
+                <i class="fa-solid fa-clone text-lg mb-1 pointer-events-none"></i>
+                <span class="pointer-events-none">Картки</span>
             </button>
-            <button id="nav-quiz" onclick="switchTab('quiz')" class="flex flex-col items-center py-1.5 text-slate-400 font-medium text-xs transition">
-                <i class="fa-solid fa-vial text-lg mb-0.5"></i>
-                Тест
+            <button id="nav-quiz" onclick="switchTab('quiz')" class="flex flex-col items-center justify-center py-2 px-1 text-slate-400 font-medium text-xs transition active:bg-slate-100 rounded-xl touch-manipulation">
+                <i class="fa-solid fa-vial text-lg mb-1 pointer-events-none"></i>
+                <span class="pointer-events-none">Тест</span>
             </button>
         </div>
     </nav>
@@ -485,11 +489,11 @@
 
             ['select', 'cards', 'quiz'].forEach(t => {
                 const btn = document.getElementById(`nav-${t}`);
-                btn.className = "flex flex-col items-center py-1.5 font-medium text-xs transition text-slate-400";
+                btn.className = "flex flex-col items-center justify-center py-2 px-1 font-medium text-xs transition text-slate-400 active:bg-slate-100 rounded-xl touch-manipulation";
             });
 
             const activeBtn = document.getElementById(`nav-${tabName}`);
-            activeBtn.className = "flex flex-col items-center py-1.5 font-medium text-xs transition text-teal-600";
+            activeBtn.className = "flex flex-col items-center justify-center py-2 px-1 font-medium text-xs transition text-teal-600 active:bg-slate-100 rounded-xl touch-manipulation";
 
             if (tabName === 'select') {
                 document.getElementById('tab-select').classList.remove('hidden');
