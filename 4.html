@@ -639,8 +639,8 @@
             shuffleArray(pool);
             pool = pool.slice(0, count);
 
-            // Кількість варіантів відповідей: до 4 (оскільки елементів мало)
-            const optionsCount = Math.min(allElements.length, 4);
+            // Відображаємо всі 11 варіантів відповіді завжди
+            const optionsCount = allElements.length;
 
             pool.forEach(item => {
                 let type = 0; // 0: Назва -> Символ, 1: Символ -> Назва
@@ -658,8 +658,7 @@
                     .filter(e => e.id !== item.id)
                     .map(e => type === 0 ? e.symbol : e.name);
                 
-                shuffleArray(wrongPool);
-                let options = [correctAnswer, ...wrongPool.slice(0, optionsCount - 1)];
+                let options = [correctAnswer, ...wrongPool];
                 shuffleArray(options);
 
                 questions.push({
@@ -722,7 +721,7 @@
             // Підсвічуємо правильну відповідь
             buttons.forEach(btn => {
                 if (btn.innerText.trim() === q.correctAnswer) {
-                    btn.className = "w-full bg-emerald-500 text-white font-bold p-3 rounded-xl shadow-md transition flex items-center justify-center text-center text-sm animate-pulse";
+                    btn.className = "w-full bg-emerald-500 text-white font-bold p-2 rounded-xl shadow-md transition flex items-center justify-center text-center text-sm animate-pulse";
                 }
             });
 
@@ -753,7 +752,7 @@
 
             q.options.forEach(opt => {
                 const btn = document.createElement('button');
-                btn.className = "w-full bg-white hover:bg-slate-50 border border-slate-200 text-slate-800 font-bold p-3 rounded-xl shadow-sm transition flex items-center justify-center text-center text-sm active:scale-95";
+                btn.className = "w-full bg-white hover:bg-slate-50 border border-slate-200 text-slate-800 font-bold p-2 rounded-xl shadow-sm transition flex items-center justify-center text-center text-sm active:scale-95";
                 btn.innerText = opt;
                 btn.onclick = () => checkAnswer(btn, opt, q.correctAnswer);
                 optionsContainer.appendChild(btn);
@@ -771,14 +770,14 @@
 
             if (selectedOption === correctAnswer) {
                 score++;
-                selectedBtn.className = "w-full bg-emerald-500 border border-emerald-500 text-white font-bold p-3 rounded-xl shadow-md transition flex items-center justify-center text-center text-sm";
+                selectedBtn.className = "w-full bg-emerald-500 border border-emerald-500 text-white font-bold p-2 rounded-xl shadow-md transition flex items-center justify-center text-center text-sm";
             } else {
-                selectedBtn.className = "w-full bg-rose-500 border border-rose-500 text-white font-bold p-3 rounded-xl shadow-md transition flex items-center justify-center text-center text-sm";
+                selectedBtn.className = "w-full bg-rose-500 border border-rose-500 text-white font-bold p-2 rounded-xl shadow-md transition flex items-center justify-center text-center text-sm";
 
                 // Підсвічуємо правильну відповідь
                 buttons.forEach(btn => {
                     if (btn.innerText.trim() === correctAnswer) {
-                        btn.className = "w-full bg-emerald-100 border border-emerald-500 text-emerald-800 font-bold p-3 rounded-xl transition flex items-center justify-center text-center text-sm";
+                        btn.className = "w-full bg-emerald-100 border border-emerald-500 text-emerald-800 font-bold p-2 rounded-xl transition flex items-center justify-center text-center text-sm";
                     }
                 });
             }
