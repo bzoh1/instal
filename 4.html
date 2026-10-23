@@ -1,0 +1,832 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Вивчення хімічних елементів</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        /* Стилі для 3D перевертання картки */
+        .perspective-1000 {
+            perspective: 1000px;
+        }
+        .transform-style-3d {
+            transform-style: preserve-3d;
+        }
+        .backface-hidden {
+            backface-visibility: hidden;
+            -webkit-backface-visibility: hidden;
+        }
+        .rotate-y-180 {
+            transform: rotateY(180deg);
+        }
+        /* Гладкі анімації */
+        .card-flip-transition {
+            transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        /* Кастомний скроллбар */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+        /* Підтримка Safe Area для мобільних пристроїв */
+        .pb-safe {
+            padding-bottom: max(1rem, env(safe-area-inset-bottom));
+        }
+    </style>
+</head>
+<body class="bg-slate-100 text-slate-800 font-sans min-h-screen flex flex-col justify-between select-none pb-24 sm:pb-0">
+
+    <!-- Верхня панель (Header) -->
+    <header class="bg-gradient-to-r from-teal-600 to-emerald-600 text-white p-4 shadow-md sticky top-0 z-50">
+        <div class="max-w-md mx-auto flex justify-between items-center">
+            <h1 class="text-xl font-bold flex items-center gap-2">
+                <i class="fa-solid fa-flask"></i> Хімія: Елементи
+            </h1>
+            <span id="selected-count-badge" class="bg-white/20 text-xs px-2.5 py-1 rounded-full font-medium">
+                Обрано: 11
+            </span>
+        </div>
+    </header>
+
+    <!-- Основний контент -->
+    <main class="flex-1 max-w-md w-full mx-auto p-4 flex flex-col justify-center">
+
+        <!-- Вкладка 1: Вибір елементів -->
+        <section id="tab-select" class="space-y-4">
+            <!-- Статистика -->
+            <div class="bg-white rounded-2xl p-4 shadow-sm border border-slate-200">
+                <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                    <i class="fa-solid fa-chart-line text-teal-600"></i> Ваша статистика
+                </h3>
+                <div class="grid grid-cols-3 gap-2 text-center">
+                    <div class="bg-slate-50 p-2 rounded-xl border border-slate-100">
+                        <span class="block text-lg font-bold text-teal-600" id="stat-tests-count">0</span>
+                        <span class="text-[10px] text-slate-500 font-medium">Тестів</span>
+                    </div>
+                    <div class="bg-slate-50 p-2 rounded-xl border border-slate-100">
+                        <span class="block text-lg font-bold text-emerald-600" id="stat-best-score">0%</span>
+                        <span class="text-[10px] text-slate-500 font-medium">Найкращий</span>
+                    </div>
+                    <div class="bg-slate-50 p-2 rounded-xl border border-slate-100">
+                        <span class="block text-lg font-bold text-indigo-600" id="stat-avg-score">0%</span>
+                        <span class="text-[10px] text-slate-500 font-medium">Середній</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-2xl p-4 shadow-sm border border-slate-200">
+                <div class="flex justify-between items-center mb-3">
+                    <h2 class="font-bold text-slate-700">Оберіть елементи:</h2>
+                    <div class="flex gap-2">
+                        <button onclick="selectAll(true)" class="text-xs bg-teal-50 text-teal-700 hover:bg-teal-100 px-2.5 py-1.5 rounded-lg font-medium transition">
+                            Усі
+                        </button>
+                        <button onclick="selectAll(false)" class="text-xs bg-slate-100 text-slate-600 hover:bg-slate-200 px-2.5 py-1.5 rounded-lg font-medium transition">
+                            Скинути
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Список елементів із чекбоксами -->
+                <div id="elements-list" class="grid grid-cols-1 gap-2 max-h-[42vh] overflow-y-auto pr-1">
+                    <!-- Заповнюється скриптом -->
+                </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3 pt-1">
+                <button onclick="switchTab('cards')" class="bg-teal-600 hover:bg-teal-700 text-white font-semibold py-3 px-4 rounded-xl shadow-lg shadow-teal-600/30 flex items-center justify-center gap-2 transition active:scale-95">
+                    <i class="fa-solid fa-clone"></i> Картки
+                </button>
+                <button onclick="switchTab('quiz')" class="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-3 px-4 rounded-xl shadow-lg shadow-emerald-600/30 flex items-center justify-center gap-2 transition active:scale-95">
+                    <i class="fa-solid fa-vial"></i> Тест
+                </button>
+            </div>
+        </section>
+
+        <!-- Вкладка 2: Режим Картки (Flashcards) -->
+        <section id="tab-cards" class="hidden flex-col items-center justify-between min-h-[60vh] py-2">
+            <!-- Верхнє меню карток: Прогрес та Режим -->
+            <div class="w-full flex flex-col gap-2 mb-2">
+                <div class="w-full flex justify-between items-center text-sm text-slate-500 font-medium px-1">
+                    <span id="card-progress">1 з 11</span>
+                    <button onclick="shuffleCards()" class="text-teal-600 hover:text-teal-800 flex items-center gap-1 font-semibold text-xs bg-teal-50 px-2.5 py-1.5 rounded-lg active:scale-95 transition">
+                        <i class="fa-solid fa-shuffle"></i> Перемішати
+                    </button>
+                </div>
+
+                <!-- Перемикач напрямку вивчення -->
+                <div class="bg-slate-200/80 p-1 rounded-xl flex text-xs font-semibold">
+                    <button id="mode-btn-direct" onclick="setCardMode('direct')" class="flex-1 py-1.5 rounded-lg transition bg-white text-teal-700 shadow-sm">
+                        Назва → Символ
+                    </button>
+                    <button id="mode-btn-reverse" onclick="setCardMode('reverse')" class="flex-1 py-1.5 rounded-lg transition text-slate-500">
+                        Символ → Назва
+                    </button>
+                </div>
+            </div>
+
+            <!-- 3D Картка -->
+            <div class="w-full h-72 perspective-1000 my-auto cursor-pointer" onclick="flipCard()">
+                <div id="flashcard" class="relative w-full h-full transform-style-3d card-flip-transition shadow-xl rounded-3xl border border-slate-200/80">
+                    
+                    <!-- Лицьова сторона -->
+                    <div class="absolute w-full h-full backface-hidden bg-white rounded-3xl p-6 flex flex-col justify-between items-center text-center">
+                        <span id="card-front-tag" class="text-[11px] font-bold tracking-wider text-teal-600 uppercase bg-teal-50 px-3 py-1 rounded-full">
+                            Назва елемента
+                        </span>
+                        <div class="my-auto">
+                            <h3 id="card-front-text" class="text-3xl font-black text-slate-800">Алюміній</h3>
+                        </div>
+                        <p class="text-xs text-slate-400 flex items-center gap-1">
+                            <i class="fa-solid fa-rotate"></i> Натисніть, щоб перевернути
+                        </p>
+                    </div>
+
+                    <!-- Зворотна сторона -->
+                    <div class="absolute w-full h-full backface-hidden rotate-y-180 bg-gradient-to-br from-teal-500 to-emerald-600 text-white rounded-3xl p-6 flex flex-col justify-between items-center text-center">
+                        <span id="card-back-tag" class="text-[11px] font-bold tracking-wider text-teal-100 uppercase bg-white/20 px-3 py-1 rounded-full">
+                            Хімічний символ
+                        </span>
+                        <div class="my-auto">
+                            <h3 id="card-back-text" class="text-6xl font-black tracking-tight">Al</h3>
+                        </div>
+                        <p class="text-xs text-teal-100 flex items-center gap-1">
+                            <i class="fa-solid fa-rotate"></i> Натисніть, щоб повернути
+                        </p>
+                    </div>
+
+                </div>
+            </div>
+
+            <!-- Навігаційні кнопки -->
+            <div class="w-full flex items-center justify-between gap-3 mt-4">
+                <button onclick="prevCard()" class="flex-1 bg-white hover:bg-slate-50 text-slate-700 font-semibold py-3 rounded-xl border border-slate-200 shadow-sm flex items-center justify-center gap-2 transition active:scale-95">
+                    <i class="fa-solid fa-arrow-left"></i> Назад
+                </button>
+                <button onclick="nextCard()" class="flex-1 bg-teal-600 hover:bg-teal-700 text-white font-semibold py-3 rounded-xl shadow-md flex items-center justify-center gap-2 transition active:scale-95">
+                    Вперед <i class="fa-solid fa-arrow-right"></i>
+                </button>
+            </div>
+        </section>
+
+        <!-- Вкладка 3: Режим Тестування (Quiz) -->
+        <section id="tab-quiz" class="hidden flex-col justify-between min-h-[60vh] py-2">
+            
+            <!-- Меню вибору типу тесту -->
+            <div id="quiz-setup-screen" class="space-y-4 my-auto">
+                <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-200 text-center space-y-4">
+                    <h3 class="text-lg font-bold text-slate-800">Оберіть режим тестування:</h3>
+                    
+                    <div class="space-y-2.5">
+                        <button onclick="selectQuizMode('symbols')" class="w-full bg-slate-50 hover:bg-teal-50 border border-slate-200 hover:border-teal-300 text-slate-700 hover:text-teal-800 font-semibold p-3.5 rounded-xl text-left flex items-center justify-between transition group">
+                            <div>
+                                <div class="font-bold">Перевірка символів</div>
+                                <div class="text-xs text-slate-400 font-normal">Питання — Назва, відповіді — Символи</div>
+                            </div>
+                            <i class="fa-solid fa-chevron-right text-slate-300 group-hover:text-teal-500"></i>
+                        </button>
+
+                        <button onclick="selectQuizMode('names')" class="w-full bg-slate-50 hover:bg-teal-50 border border-slate-200 hover:border-teal-300 text-slate-700 hover:text-teal-800 font-semibold p-3.5 rounded-xl text-left flex items-center justify-between transition group">
+                            <div>
+                                <div class="font-bold">Перевірка назв</div>
+                                <div class="text-xs text-slate-400 font-normal">Питання — Символ, відповіді — Назви</div>
+                            </div>
+                            <i class="fa-solid fa-chevron-right text-slate-300 group-hover:text-teal-500"></i>
+                        </button>
+
+                        <button onclick="selectQuizMode('mixed')" class="w-full bg-slate-50 hover:bg-teal-50 border border-slate-200 hover:border-teal-300 text-slate-700 hover:text-teal-800 font-semibold p-3.5 rounded-xl text-left flex items-center justify-between transition group">
+                            <div>
+                                <div class="font-bold">Змішаний режим</div>
+                                <div class="text-xs text-slate-400 font-normal">Випадкові питання обох типів (х1.5 питань)</div>
+                            </div>
+                            <i class="fa-solid fa-shuffle text-slate-300 group-hover:text-teal-500"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Прогрес та питання тесту -->
+            <div id="quiz-screen" class="hidden flex-col justify-between h-full">
+                <div>
+                    <div class="flex justify-between items-center mb-1 text-xs text-slate-500 font-semibold">
+                        <span id="quiz-progress">Питання 1 з 10</span>
+                        <span id="quiz-score" class="text-emerald-600 font-bold">Очки: 0</span>
+                    </div>
+                    
+                    <!-- 10-секундний анімований таймер -->
+                    <div class="w-full bg-slate-200 h-2 rounded-full mb-3 overflow-hidden">
+                        <div id="quiz-timer-bar" class="bg-amber-500 h-full w-full transition-all linear"></div>
+                    </div>
+
+                    <!-- Карточка питання -->
+                    <div class="bg-white rounded-2xl p-4 shadow-sm border border-slate-200 mb-3 text-center">
+                        <span id="quiz-question-type" class="text-[10px] font-bold text-emerald-600 uppercase tracking-wider bg-emerald-50 px-2.5 py-1 rounded-full">
+                            Оберіть відповідність
+                        </span>
+                        <h3 id="quiz-question-text" class="text-2xl font-black text-slate-800 mt-2">
+                            Гідроген
+                        </h3>
+                    </div>
+
+                    <!-- Варіанти відповідей (Сітка 2x4 або 2x5) -->
+                    <div id="quiz-options" class="grid grid-cols-2 gap-2 max-h-[46vh] overflow-y-auto pr-0.5">
+                        <!-- Заповнюється динамічно -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Результати тесту -->
+            <div id="results-screen" class="hidden bg-white rounded-3xl p-6 shadow-md border border-slate-200 text-center space-y-4 my-auto">
+                <div class="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto text-2xl">
+                    <i class="fa-solid fa-trophy"></i>
+                </div>
+                <div>
+                    <h3 class="text-xl font-bold text-slate-800">Тест завершено!</h3>
+                    <p class="text-slate-400 text-xs mt-1">Ваш результат:</p>
+                </div>
+                
+                <div class="text-4xl font-black text-emerald-600" id="results-percentage">
+                    80%
+                </div>
+                <p class="text-slate-600 font-medium text-sm" id="results-detail">
+                    Правильно: 8 з 10
+                </p>
+
+                <div class="pt-2 space-y-2">
+                    <button onclick="showQuizSetup()" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-3 rounded-xl shadow-md transition active:scale-95">
+                        Пройти знову
+                    </button>
+                    <button onclick="switchTab('select')" class="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold py-3 rounded-xl transition active:scale-95">
+                        Змінити елементи
+                    </button>
+                </div>
+            </div>
+
+        </section>
+
+    </main>
+
+    <!-- Нижня панель навігації (Bottom Navigation) -->
+    <nav class="bg-white border-t border-slate-200 fixed bottom-0 left-0 right-0 z-[100] pb-safe shadow-lg">
+        <div class="max-w-md mx-auto grid grid-cols-3 gap-1 p-2">
+            <button id="nav-select" onclick="switchTab('select')" class="flex flex-col items-center justify-center py-2 px-1 text-teal-600 font-medium text-xs transition active:bg-slate-100 rounded-xl touch-manipulation">
+                <i class="fa-solid fa-list-check text-lg mb-1 pointer-events-none"></i>
+                <span class="pointer-events-none">Вибір</span>
+            </button>
+            <button id="nav-cards" onclick="switchTab('cards')" class="flex flex-col items-center justify-center py-2 px-1 text-slate-400 font-medium text-xs transition active:bg-slate-100 rounded-xl touch-manipulation">
+                <i class="fa-solid fa-clone text-lg mb-1 pointer-events-none"></i>
+                <span class="pointer-events-none">Картки</span>
+            </button>
+            <button id="nav-quiz" onclick="switchTab('quiz')" class="flex flex-col items-center justify-center py-2 px-1 text-slate-400 font-medium text-xs transition active:bg-slate-100 rounded-xl touch-manipulation">
+                <i class="fa-solid fa-vial text-lg mb-1 pointer-events-none"></i>
+                <span class="pointer-events-none">Тест</span>
+            </button>
+        </div>
+    </nav>
+
+    <!-- JavaScript Логіка -->
+    <script>
+        // Повний список елементів із таблиці, залишено лише 11 вказаних
+        const allElements = [
+            { id: 1, name: "Алюміній", symbol: "Al" },
+            { id: 2, name: "Гідроген", symbol: "H" },
+            { id: 3, name: "Калій", symbol: "K" },
+            { id: 4, name: "Кальцій", symbol: "Ca" },
+            { id: 5, name: "Карбон", symbol: "C" },
+            { id: 6, name: "Магній", symbol: "Mg" },
+            { id: 7, name: "Натрій", symbol: "Na" },
+            { id: 8, name: "Нітроген", symbol: "N" },
+            { id: 9, name: "Оксиген", symbol: "O" },
+            { id: 10, name: "Силіцій", symbol: "Si" },
+            { id: 11, name: "Ферум", symbol: "Fe" }
+        ];
+
+        // Обрані елементи
+        let selectedElementIds = new Set(allElements.map(e => e.id));
+
+        // Стан карток
+        let activeCards = [];
+        let currentCardIndex = 0;
+        let isFlipped = false;
+        let cardMode = 'direct'; // 'direct': Назва -> Символ, 'reverse': Символ -> Назва
+
+        // Стан тесту
+        let selectedQuizMode = 'mixed'; // 'symbols', 'names', 'mixed'
+        let quizQuestions = [];
+        let currentQuestionIndex = 0;
+        let score = 0;
+        let isAnswered = false;
+        let questionTimer = null;
+        let timerInterval = null;
+        const QUESTION_TIME_LIMIT = 10; // 10 секунд на питання
+
+        // Стан статистики
+        let userStats = {
+            testsCount: 0,
+            bestScore: 0,
+            totalPercentageSum: 0
+        };
+
+        // --- РОБОТА З ЗБЕРЕЖЕННЯМ ДАНИХ (Cookies / LocalStorage) ---
+        function saveUserData() {
+            const data = {
+                selectedIds: Array.from(selectedElementIds),
+                cardMode: cardMode,
+                stats: userStats
+            };
+            try {
+                localStorage.setItem('chem_app_data', JSON.stringify(data));
+            } catch (e) {
+                // Fallback для Cookies
+                document.cookie = "chem_app_data=" + encodeURIComponent(JSON.stringify(data)) + ";path=/;max-age=31536000";
+            }
+        }
+
+        function loadUserData() {
+            let parsedData = null;
+            try {
+                const localData = localStorage.getItem('chem_app_data');
+                if (localData) parsedData = JSON.parse(localData);
+            } catch (e) {}
+
+            if (!parsedData) {
+                const cookieMatch = document.cookie.match(/chem_app_data=([^;]+)/);
+                if (cookieMatch) {
+                    try {
+                        parsedData = JSON.parse(decodeURIComponent(cookieMatch[1]));
+                    } catch (e) {}
+                }
+            }
+
+            if (parsedData) {
+                if (Array.isArray(parsedData.selectedIds) && parsedData.selectedIds.length > 0) {
+                    // Фільтруємо збережені ID, щоб залишити лише ті, що є у нашому поточному списку з 11 елементів
+                    const validIds = parsedData.selectedIds.filter(id => allElements.some(e => e.id === id));
+                    if(validIds.length > 0) {
+                        selectedElementIds = new Set(validIds);
+                    }
+                }
+                if (parsedData.cardMode) {
+                    cardMode = parsedData.cardMode;
+                }
+                if (parsedData.stats) {
+                    userStats = parsedData.stats;
+                }
+            }
+        }
+
+        // Ініціалізація
+        window.onload = function () {
+            loadUserData();
+            renderElementsList();
+            updateSelectedBadge();
+            updateStatsUI();
+            updateCardModeUI();
+        };
+
+        function updateStatsUI() {
+            document.getElementById('stat-tests-count').innerText = userStats.testsCount;
+            document.getElementById('stat-best-score').innerText = `${userStats.bestScore}%`;
+            
+            const avg = userStats.testsCount > 0 
+                ? Math.round(userStats.totalPercentageSum / userStats.testsCount) 
+                : 0;
+            document.getElementById('stat-avg-score').innerText = `${avg}%`;
+        }
+
+        // --- ЛОГІКА ВИБОРУ ЕЛЕМЕНТІВ ---
+        function renderElementsList() {
+            const listContainer = document.getElementById('elements-list');
+            listContainer.innerHTML = '';
+
+            allElements.forEach(el => {
+                const isChecked = selectedElementIds.has(el.id);
+                const item = document.createElement('label');
+                item.className = `flex items-center justify-between p-3 rounded-xl border transition cursor-pointer ${
+                    isChecked ? 'bg-teal-50/60 border-teal-200' : 'bg-slate-50 border-slate-200'
+                }`;
+                item.innerHTML = `
+                    <div class="flex items-center gap-3">
+                        <input type="checkbox" ${isChecked ? 'checked' : ''} onchange="toggleElement(${el.id})" 
+                            class="w-5 h-5 text-teal-600 rounded focus:ring-teal-500 border-slate-300">
+                        <span class="font-semibold text-slate-800 text-sm">${el.name}</span>
+                    </div>
+                    <span class="font-bold text-slate-600 bg-white px-2.5 py-1 rounded-lg border border-slate-200 text-sm">
+                        ${el.symbol}
+                    </span>
+                `;
+                listContainer.appendChild(item);
+            });
+        }
+
+        function toggleElement(id) {
+            if (selectedElementIds.has(id)) {
+                if (selectedElementIds.size === 1) {
+                    showMessage("Будь ласка, залиште хоча б один елемент!");
+                    renderElementsList();
+                    return;
+                }
+                selectedElementIds.delete(id);
+            } else {
+                selectedElementIds.add(id);
+            }
+            saveUserData();
+            updateSelectedBadge();
+            renderElementsList();
+        }
+
+        function selectAll(select) {
+            if (select) {
+                selectedElementIds = new Set(allElements.map(e => e.id));
+            } else {
+                selectedElementIds = new Set([allElements[0].id]); // Залишаємо хоча б один
+            }
+            saveUserData();
+            updateSelectedBadge();
+            renderElementsList();
+        }
+
+        function updateSelectedBadge() {
+            document.getElementById('selected-count-badge').innerText = `Обрано: ${selectedElementIds.size}`;
+        }
+
+        function getSelectedElements() {
+            return allElements.filter(e => selectedElementIds.has(e.id));
+        }
+
+        // --- ПЕРЕМЕКАННЯ ВКЛАДОК ---
+        function switchTab(tabName) {
+            if (selectedElementIds.size === 0) {
+                showMessage("Оберіть хоча б один елемент для вивчення.");
+                return;
+            }
+
+            clearTimer(); // Зупиняємо таймер тесту, якщо користувач виходить з вкладки тесту
+
+            document.getElementById('tab-select').classList.add('hidden');
+            document.getElementById('tab-cards').classList.add('hidden');
+            document.getElementById('tab-cards').classList.remove('flex');
+            document.getElementById('tab-quiz').classList.add('hidden');
+            document.getElementById('tab-quiz').classList.remove('flex');
+
+            ['select', 'cards', 'quiz'].forEach(t => {
+                const btn = document.getElementById(`nav-${t}`);
+                btn.className = "flex flex-col items-center justify-center py-2 px-1 font-medium text-xs transition text-slate-400 active:bg-slate-100 rounded-xl touch-manipulation";
+            });
+
+            const activeBtn = document.getElementById(`nav-${tabName}`);
+            activeBtn.className = "flex flex-col items-center justify-center py-2 px-1 font-medium text-xs transition text-teal-600 active:bg-slate-100 rounded-xl touch-manipulation";
+
+            if (tabName === 'select') {
+                document.getElementById('tab-select').classList.remove('hidden');
+            } else if (tabName === 'cards') {
+                document.getElementById('tab-cards').classList.remove('hidden');
+                document.getElementById('tab-cards').classList.add('flex');
+                initCards();
+            } else if (tabName === 'quiz') {
+                document.getElementById('tab-quiz').classList.remove('hidden');
+                document.getElementById('tab-quiz').classList.add('flex');
+                showQuizSetup();
+            }
+        }
+
+        // --- ЛОГІКА КАРТОК (FLASHCARDS) ---
+        function setCardMode(mode) {
+            cardMode = mode;
+            saveUserData();
+            updateCardModeUI();
+            updateCardUI();
+        }
+
+        function updateCardModeUI() {
+            const btnDirect = document.getElementById('mode-btn-direct');
+            const btnReverse = document.getElementById('mode-btn-reverse');
+
+            if (cardMode === 'direct') {
+                btnDirect.className = "flex-1 py-1.5 rounded-lg transition bg-white text-teal-700 shadow-sm font-bold";
+                btnReverse.className = "flex-1 py-1.5 rounded-lg transition text-slate-500 font-semibold";
+            } else {
+                btnReverse.className = "flex-1 py-1.5 rounded-lg transition bg-white text-teal-700 shadow-sm font-bold";
+                btnDirect.className = "flex-1 py-1.5 rounded-lg transition text-slate-500 font-semibold";
+            }
+        }
+
+        function initCards() {
+            activeCards = getSelectedElements();
+            // Автоматичне перемішування карток одразу при переході до режим вивчення
+            shuffleArray(activeCards);
+            currentCardIndex = 0;
+            updateCardUI();
+        }
+
+        function updateCardUI() {
+            isFlipped = false;
+            document.getElementById('flashcard').classList.remove('rotate-y-180');
+
+            const card = activeCards[currentCardIndex];
+            
+            setTimeout(() => {
+                if (cardMode === 'direct') {
+                    document.getElementById('card-front-tag').innerText = "Назва елемента";
+                    document.getElementById('card-front-text').innerText = card.name;
+                    document.getElementById('card-back-tag').innerText = "Хімічний символ";
+                    document.getElementById('card-back-text').innerText = card.symbol;
+                } else {
+                    document.getElementById('card-front-tag').innerText = "Хімічний символ";
+                    document.getElementById('card-front-text').innerText = card.symbol;
+                    document.getElementById('card-back-tag').innerText = "Назва елемента";
+                    document.getElementById('card-back-text').innerText = card.name;
+                }
+                document.getElementById('card-progress').innerText = `${currentCardIndex + 1} з ${activeCards.length}`;
+            }, 150);
+        }
+
+        function flipCard() {
+            isFlipped = !isFlipped;
+            const flashcard = document.getElementById('flashcard');
+            if (isFlipped) {
+                flashcard.classList.add('rotate-y-180');
+            } else {
+                flashcard.classList.remove('rotate-y-180');
+            }
+        }
+
+        function nextCard() {
+            if (currentCardIndex < activeCards.length - 1) {
+                currentCardIndex++;
+            } else {
+                currentCardIndex = 0;
+            }
+            updateCardUI();
+        }
+
+        function prevCard() {
+            if (currentCardIndex > 0) {
+                currentCardIndex--;
+            } else {
+                currentCardIndex = activeCards.length - 1;
+            }
+            updateCardUI();
+        }
+
+        function shuffleArray(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+        }
+
+        function shuffleCards() {
+            shuffleArray(activeCards);
+            currentCardIndex = 0;
+            updateCardUI();
+            showMessage("Картки перемішано!");
+        }
+
+        // --- ЛОГІКА ТЕСТУВАННЯ ---
+        function showQuizSetup() {
+            clearTimer();
+            document.getElementById('quiz-setup-screen').classList.remove('hidden');
+            document.getElementById('quiz-screen').classList.add('hidden');
+            document.getElementById('quiz-screen').classList.remove('flex');
+            document.getElementById('results-screen').classList.add('hidden');
+        }
+
+        function selectQuizMode(mode) {
+            selectedQuizMode = mode;
+            startQuiz();
+        }
+
+        function startQuiz() {
+            const selected = getSelectedElements();
+            score = 0;
+            currentQuestionIndex = 0;
+            isAnswered = false;
+
+            // Розрахунок кількості питань
+            let totalQuestionsCount = Math.max(8, selected.length);
+            if (selectedQuizMode === 'mixed') {
+                totalQuestionsCount = Math.max(8, Math.round(selected.length * 1.5));
+            }
+
+            quizQuestions = generateQuestions(selected, totalQuestionsCount);
+
+            document.getElementById('quiz-setup-screen').classList.add('hidden');
+            document.getElementById('quiz-screen').classList.remove('hidden');
+            document.getElementById('quiz-screen').classList.add('flex');
+            document.getElementById('results-screen').classList.add('hidden');
+
+            renderQuestion();
+        }
+
+        function generateQuestions(elements, count) {
+            let questions = [];
+            let pool = [];
+
+            while (pool.length < count) {
+                pool = pool.concat(elements);
+            }
+            
+            shuffleArray(pool);
+            pool = pool.slice(0, count);
+
+            // Кількість варіантів відповідей: до 4 (оскільки елементів мало)
+            const optionsCount = Math.min(allElements.length, 4);
+
+            pool.forEach(item => {
+                let type = 0; // 0: Назва -> Символ, 1: Символ -> Назва
+                if (selectedQuizMode === 'symbols') {
+                    type = 0;
+                } else if (selectedQuizMode === 'names') {
+                    type = 1;
+                } else {
+                    type = Math.random() > 0.5 ? 0 : 1;
+                }
+                
+                let correctAnswer = type === 0 ? item.symbol : item.name;
+                
+                let wrongPool = allElements
+                    .filter(e => e.id !== item.id)
+                    .map(e => type === 0 ? e.symbol : e.name);
+                
+                shuffleArray(wrongPool);
+                let options = [correctAnswer, ...wrongPool.slice(0, optionsCount - 1)];
+                shuffleArray(options);
+
+                questions.push({
+                    element: item,
+                    type: type,
+                    questionText: type === 0 ? item.name : item.symbol,
+                    correctAnswer: correctAnswer,
+                    options: options
+                });
+            });
+
+            return questions;
+        }
+
+        function clearTimer() {
+            if (questionTimer) clearTimeout(questionTimer);
+            if (timerInterval) clearInterval(timerInterval);
+        }
+
+        function startTimer() {
+            clearTimer();
+            const timerBar = document.getElementById('quiz-timer-bar');
+            
+            // Скидаємо анімацію та стиль
+            timerBar.style.transition = 'none';
+            timerBar.style.width = '100%';
+            timerBar.className = "bg-amber-500 h-full w-full";
+
+            let startTime = Date.now();
+            let duration = QUESTION_TIME_LIMIT * 1000;
+
+            // Запускаємо плавну анімацію через JS interval
+            timerInterval = setInterval(() => {
+                let elapsed = Date.now() - startTime;
+                let remainingPercent = Math.max(0, 100 - (elapsed / duration) * 100);
+                timerBar.style.width = `${remainingPercent}%`;
+
+                if (remainingPercent < 30) {
+                    timerBar.className = "bg-rose-500 h-full transition-all";
+                }
+            }, 50);
+
+            // Таймаут для закінчення часу
+            questionTimer = setTimeout(() => {
+                handleTimeout();
+            }, duration);
+        }
+
+        function handleTimeout() {
+            if (isAnswered) return;
+            isAnswered = true;
+            clearTimer();
+
+            const timerBar = document.getElementById('quiz-timer-bar');
+            timerBar.style.width = '0%';
+
+            const q = quizQuestions[currentQuestionIndex];
+            const buttons = document.querySelectorAll('#quiz-options button');
+
+            // Підсвічуємо правильну відповідь
+            buttons.forEach(btn => {
+                if (btn.innerText.trim() === q.correctAnswer) {
+                    btn.className = "w-full bg-emerald-500 text-white font-bold p-3 rounded-xl shadow-md transition flex items-center justify-center text-center text-sm animate-pulse";
+                }
+            });
+
+            showMessage("Час вичерпано!");
+
+            setTimeout(() => {
+                currentQuestionIndex++;
+                if (currentQuestionIndex < quizQuestions.length) {
+                    renderQuestion();
+                } else {
+                    showResults();
+                }
+            }, 1200);
+        }
+
+        function renderQuestion() {
+            isAnswered = false;
+            const q = quizQuestions[currentQuestionIndex];
+
+            document.getElementById('quiz-progress').innerText = `Питання ${currentQuestionIndex + 1} з ${quizQuestions.length}`;
+            document.getElementById('quiz-score').innerText = `Очки: ${score}`;
+
+            document.getElementById('quiz-question-type').innerText = q.type === 0 ? "Оберіть правильний символ" : "Оберіть правильну назву";
+            document.getElementById('quiz-question-text').innerText = q.questionText;
+
+            const optionsContainer = document.getElementById('quiz-options');
+            optionsContainer.innerHTML = '';
+
+            q.options.forEach(opt => {
+                const btn = document.createElement('button');
+                btn.className = "w-full bg-white hover:bg-slate-50 border border-slate-200 text-slate-800 font-bold p-3 rounded-xl shadow-sm transition flex items-center justify-center text-center text-sm active:scale-95";
+                btn.innerText = opt;
+                btn.onclick = () => checkAnswer(btn, opt, q.correctAnswer);
+                optionsContainer.appendChild(btn);
+            });
+
+            startTimer();
+        }
+
+        function checkAnswer(selectedBtn, selectedOption, correctAnswer) {
+            if (isAnswered) return;
+            isAnswered = true;
+            clearTimer();
+
+            const buttons = document.querySelectorAll('#quiz-options button');
+
+            if (selectedOption === correctAnswer) {
+                score++;
+                selectedBtn.className = "w-full bg-emerald-500 border border-emerald-500 text-white font-bold p-3 rounded-xl shadow-md transition flex items-center justify-center text-center text-sm";
+            } else {
+                selectedBtn.className = "w-full bg-rose-500 border border-rose-500 text-white font-bold p-3 rounded-xl shadow-md transition flex items-center justify-center text-center text-sm";
+
+                // Підсвічуємо правильну відповідь
+                buttons.forEach(btn => {
+                    if (btn.innerText.trim() === correctAnswer) {
+                        btn.className = "w-full bg-emerald-100 border border-emerald-500 text-emerald-800 font-bold p-3 rounded-xl transition flex items-center justify-center text-center text-sm";
+                    }
+                });
+            }
+
+            setTimeout(() => {
+                currentQuestionIndex++;
+                if (currentQuestionIndex < quizQuestions.length) {
+                    renderQuestion();
+                } else {
+                    showResults();
+                }
+            }, 1000);
+        }
+
+        function showResults() {
+            clearTimer();
+            document.getElementById('quiz-screen').classList.add('hidden');
+            document.getElementById('quiz-screen').classList.remove('flex');
+            document.getElementById('results-screen').classList.remove('hidden');
+
+            const percentage = Math.round((score / quizQuestions.length) * 100);
+            document.getElementById('results-percentage').innerText = `${percentage}%`;
+            document.getElementById('results-detail').innerText = `Правильно: ${score} з ${quizQuestions.length}`;
+
+            // Оновлюємо статистику
+            userStats.testsCount++;
+            userStats.totalPercentageSum += percentage;
+            if (percentage > userStats.bestScore) {
+                userStats.bestScore = percentage;
+            }
+
+            saveUserData();
+            updateStatsUI();
+        }
+
+        // Кастомне повідомлення
+        function showMessage(msg) {
+            const toast = document.createElement('div');
+            toast.className = "fixed top-5 left-1/2 -translate-x-1/2 bg-slate-800 text-white text-xs px-4 py-2.5 rounded-full shadow-lg z-50 transition-all duration-300 opacity-0";
+            toast.innerText = msg;
+            document.body.appendChild(toast);
+
+            setTimeout(() => toast.classList.remove('opacity-0'), 10);
+            setTimeout(() => {
+                toast.classList.add('opacity-0');
+                setTimeout(() => toast.remove(), 300);
+            }, 2500);
+        }
+    </script>
+</body>
+</html>
