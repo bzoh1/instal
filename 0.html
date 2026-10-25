@@ -1,0 +1,873 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Інтерактивний Тренажер Слів</title>
+  
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <!-- Google Fonts: Inter -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  
+  <style>
+    body { font-family: 'Inter', sans-serif; }
+    
+    /* 3D Card Flip Styles */
+    .perspective-1000 { perspective: 1000px; }
+    .preserve-3d { transform-style: preserve-3d; }
+    .backface-hidden { 
+      backface-visibility: hidden; 
+      -webkit-backface-visibility: hidden;
+    }
+    .rotate-y-180 { transform: rotateY(180deg); }
+    
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: #f1f5f9; }
+    ::-webkit-scrollbar-thumb { background: #14b8a6; border-radius: 4px; }
+    
+    /* Smooth Transitions */
+    .fade-in { animation: fadeIn 0.3s ease-in-out; }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(5px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    
+    /* Timer Bar Transition */
+    #quiz-timer-bar { transition: width 0.1s linear, background-color 0.3s ease; }
+  </style>
+
+  <!-- APP DATA SCRIPT (Will be modified on export) -->
+  <script id="app-data">
+    window.IS_EXPORTED = false;
+    window.APP_DATA = { 
+      col1Name: "Англійська", 
+      col2Name: "Українська", 
+      col1Lang: "en-US", 
+      col2Lang: "uk-UA", 
+      words: [] 
+    };
+  </script>
+</head>
+<body class="bg-slate-50 text-slate-800 antialiased h-screen overflow-hidden flex flex-col">
+
+  <!-- ========================================== -->
+  <!-- BUILDER UI -->
+  <!-- ========================================== -->
+  <div id="builder-ui" class="h-full overflow-y-auto w-full max-w-5xl mx-auto p-4 md:p-8 pb-20">
+    <div class="bg-white rounded-3xl shadow-lg border border-teal-100 p-6 md:p-8">
+      <div class="flex items-center gap-4 mb-8 pb-6 border-b border-slate-100">
+        <div class="w-14 h-14 bg-teal-100 text-teal-600 rounded-2xl flex items-center justify-center text-2xl shadow-inner">
+          <i class="fa-solid fa-wand-magic-sparkles"></i>
+        </div>
+        <div>
+          <h1 class="text-2xl font-extrabold text-slate-800">Конструктор Тренажера</h1>
+          <p class="text-slate-500 text-sm">Створіть власний набір слів для вивчення</p>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+        <!-- Settings -->
+        <div class="space-y-5 bg-slate-50 p-5 rounded-2xl border border-slate-200">
+          <h3 class="font-bold text-slate-700 uppercase tracking-wider text-xs flex items-center gap-2"><i class="fa-solid fa-gear text-teal-500"></i> Налаштування колонок</h3>
+          
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <label class="block text-xs font-semibold text-slate-500 mb-1">Назва Колонки 1</label>
+              <input type="text" id="b-col1-name" value="Англійська" class="w-full px-3 py-2 rounded-xl border border-slate-300 focus:ring-2 focus:ring-teal-500 text-sm outline-none">
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-500 mb-1">Назва Колонки 2</label>
+              <input type="text" id="b-col2-name" value="Українська" class="w-full px-3 py-2 rounded-xl border border-slate-300 focus:ring-2 focus:ring-teal-500 text-sm outline-none">
+            </div>
+          </div>
+
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <label class="block text-xs font-semibold text-slate-500 mb-1">Голос (Озвучка) для 1</label>
+              <select id="b-col1-lang" class="w-full px-3 py-2 rounded-xl border border-slate-300 focus:ring-2 focus:ring-teal-500 text-sm outline-none bg-white">
+                <option value="en-US" selected>Англійська (US)</option>
+                <option value="en-GB">Англійська (UK)</option>
+                <option value="uk-UA">Українська</option>
+                <option value="de-DE">Німецька</option>
+                <option value="fr-FR">Французька</option>
+                <option value="es-ES">Іспанська</option>
+                <option value="none">Без озвучки</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-500 mb-1">Голос (Озвучка) для 2</label>
+              <select id="b-col2-lang" class="w-full px-3 py-2 rounded-xl border border-slate-300 focus:ring-2 focus:ring-teal-500 text-sm outline-none bg-white">
+                <option value="uk-UA" selected>Українська</option>
+                <option value="en-US">Англійська (US)</option>
+                <option value="de-DE">Німецька</option>
+                <option value="none">Без озвучки</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- Words Input -->
+        <div class="space-y-3">
+          <div class="flex justify-between items-end">
+            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider">Список Слів</label>
+            <span class="text-[10px] text-slate-400 bg-slate-100 px-2 py-1 rounded">Формат: Слово - Переклад</span>
+          </div>
+          <textarea id="b-words" rows="8" placeholder="Apple - Яблуко&#10;Cat - Кіт&#10;House - Будинок" class="w-full p-4 rounded-2xl border border-slate-300 focus:ring-2 focus:ring-teal-500 text-sm outline-none font-mono resize-none leading-relaxed bg-slate-50">Apple - Яблуко
+Cat - Кіт
+House - Будинок
+Car - Автомобіль
+Tree - Дерево
+Book - Книга
+Sun - Сонце
+Water - Вода
+Friend - Друг
+Time - Час</textarea>
+        </div>
+      </div>
+
+      <!-- Actions -->
+      <div class="flex flex-col sm:flex-row gap-4 pt-6 border-t border-slate-100">
+        <button onclick="previewApp()" class="flex-1 bg-slate-800 hover:bg-slate-700 text-white font-semibold py-3 px-6 rounded-2xl transition shadow-lg flex items-center justify-center gap-2">
+          <i class="fa-solid fa-play"></i> Попередній перегляд
+        </button>
+        <button onclick="exportApp()" class="flex-1 bg-gradient-to-r from-teal-500 to-emerald-500 hover:from-teal-600 hover:to-emerald-600 text-white font-bold py-3 px-6 rounded-2xl transition shadow-lg shadow-teal-200 flex items-center justify-center gap-2">
+          <i class="fa-solid fa-download"></i> Завантажити готовий HTML
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- APP UI -->
+  <!-- ========================================== -->
+  <div id="app-ui" class="hidden h-full flex flex-col bg-slate-50 w-full relative">
+    
+    <!-- App Header -->
+    <header class="bg-gradient-to-r from-teal-600 to-emerald-600 text-white shadow-md z-20 shrink-0">
+      <div class="max-w-4xl mx-auto px-4 py-3 flex justify-between items-center">
+        <div class="flex items-center gap-3">
+          <div class="bg-white/20 p-2 rounded-xl backdrop-blur-sm">
+            <i class="fa-solid fa-graduation-cap text-xl"></i>
+          </div>
+          <div>
+            <h1 class="font-bold text-lg leading-tight" id="app-title">Тренажер Слів</h1>
+            <p class="text-[11px] text-teal-100 opacity-90" id="app-subtitle">Англійська - Українська</p>
+          </div>
+        </div>
+        <button id="btn-back-builder" onclick="showBuilder()" class="hidden text-xs bg-white/20 hover:bg-white/30 px-3 py-1.5 rounded-lg transition font-medium backdrop-blur-sm">
+          <i class="fa-solid fa-pen mr-1"></i> Редагувати
+        </button>
+      </div>
+    </header>
+
+    <!-- Main Content Area -->
+    <main class="flex-1 overflow-y-auto pb-24 relative max-w-4xl mx-auto w-full">
+      
+      <!-- TAB 1: SELECT (DICTIONARY) -->
+      <section id="tab-select" class="p-4 fade-in">
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+          <div class="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+            <h2 class="font-bold text-slate-700 text-sm">Словник для вивчення</h2>
+            <div class="flex gap-2">
+              <button onclick="toggleAllWords(true)" class="text-xs font-semibold px-3 py-1.5 bg-teal-100 text-teal-700 rounded-lg hover:bg-teal-200 transition">Вибрати всі</button>
+              <button onclick="toggleAllWords(false)" class="text-xs font-semibold px-3 py-1.5 bg-slate-200 text-slate-600 rounded-lg hover:bg-slate-300 transition">Зняти всі</button>
+            </div>
+          </div>
+          <div class="overflow-x-auto">
+            <table class="w-full text-left text-sm">
+              <thead class="bg-slate-50 text-slate-400 text-xs uppercase tracking-wider">
+                <tr>
+                  <th class="p-4 w-12 text-center">#</th>
+                  <th class="p-4" id="th-col1">Колонка 1</th>
+                  <th class="p-4" id="th-col2">Колонка 2</th>
+                  <th class="p-4 text-center w-24">Вчити</th>
+                </tr>
+              </thead>
+              <tbody id="dict-tbody" class="divide-y divide-slate-100 font-medium text-slate-700">
+                <!-- JS Populated -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 2: FLASHCARDS -->
+      <section id="tab-cards" class="hidden p-4 fade-in h-full flex flex-col">
+        
+        <!-- Controls -->
+        <div class="bg-white p-3 rounded-2xl shadow-sm border border-slate-200 mb-6 flex flex-wrap gap-4 items-center justify-between">
+          <div class="flex items-center gap-2">
+            <label class="text-xs font-bold text-slate-500 uppercase tracking-wide">Напрямок:</label>
+            <select id="card-direction" onchange="resetCards()" class="bg-slate-100 border border-slate-200 text-slate-700 text-xs font-bold rounded-lg px-2 py-1.5 outline-none focus:ring-2 focus:ring-teal-500 cursor-pointer">
+              <option value="1to2">Кол1 ➔ Кол2</option>
+              <option value="2to1">Кол2 ➔ Кол1</option>
+            </select>
+          </div>
+          <label class="flex items-center gap-2 cursor-pointer group text-xs font-bold text-slate-500 uppercase tracking-wide">
+            <input type="checkbox" id="card-auto-tts" class="w-4 h-4 text-teal-600 rounded border-slate-300 focus:ring-teal-500 cursor-pointer">
+            Авто-озвучка
+          </label>
+        </div>
+
+        <!-- 3D Card Area -->
+        <div class="flex-1 flex flex-col items-center justify-center min-h-[300px]">
+          <div class="text-slate-400 font-bold text-sm mb-4" id="card-counter">1 / 10</div>
+          
+          <div class="perspective-1000 w-full max-w-sm h-72 cursor-pointer group" onclick="flipCard()">
+            <div id="flashcard-inner" class="relative w-full h-full duration-500 preserve-3d shadow-xl rounded-[2rem] border border-slate-200/50">
+              
+              <!-- Front Side -->
+              <div class="absolute inset-0 w-full h-full bg-white rounded-[2rem] p-6 backface-hidden flex flex-col">
+                <div class="flex justify-between items-center text-xs font-bold text-slate-400">
+                  <span id="card-front-label">Термін</span>
+                  <i class="fa-solid fa-arrow-rotate-right opacity-50"></i>
+                </div>
+                <div class="flex-1 flex items-center justify-center text-center">
+                  <h3 id="card-front-text" class="text-3xl sm:text-4xl font-extrabold text-slate-800 break-words w-full px-2">...</h3>
+                </div>
+                <div class="flex justify-center h-8">
+                  <button onclick="playCardAudio(event, 'front')" class="w-10 h-10 -mt-2 bg-teal-50 text-teal-600 rounded-full flex items-center justify-center hover:bg-teal-100 transition shadow-sm">
+                    <i class="fa-solid fa-volume-high"></i>
+                  </button>
+                </div>
+              </div>
+
+              <!-- Back Side -->
+              <div class="absolute inset-0 w-full h-full bg-gradient-to-br from-teal-500 to-emerald-600 rounded-[2rem] p-6 backface-hidden rotate-y-180 flex flex-col text-white shadow-inner">
+                <div class="flex justify-between items-center text-xs font-bold text-teal-100">
+                  <span id="card-back-label">Переклад</span>
+                  <i class="fa-solid fa-arrow-rotate-right opacity-70"></i>
+                </div>
+                <div class="flex-1 flex items-center justify-center text-center">
+                  <h3 id="card-back-text" class="text-2xl sm:text-3xl font-bold break-words w-full px-2">...</h3>
+                </div>
+                <div class="flex justify-center h-8">
+                  <button onclick="playCardAudio(event, 'back')" class="w-10 h-10 -mt-2 bg-white/20 text-white rounded-full flex items-center justify-center hover:bg-white/30 transition backdrop-blur-sm">
+                    <i class="fa-solid fa-volume-high"></i>
+                  </button>
+                </div>
+              </div>
+
+            </div>
+          </div>
+
+          <!-- Card Nav Controls -->
+          <div class="flex gap-4 mt-8 w-full max-w-sm">
+            <button onclick="prevCard()" class="flex-1 bg-white border border-slate-200 py-3 rounded-2xl font-bold text-slate-600 hover:bg-slate-50 transition shadow-sm active:scale-95"><i class="fa-solid fa-chevron-left mr-1"></i> Назад</button>
+            <button onclick="shuffleCards()" class="w-14 bg-white border border-slate-200 py-3 rounded-2xl font-bold text-slate-600 hover:bg-slate-50 transition shadow-sm active:scale-95"><i class="fa-solid fa-shuffle"></i></button>
+            <button onclick="nextCard()" class="flex-1 bg-teal-600 py-3 rounded-2xl font-bold text-white hover:bg-teal-700 transition shadow-md shadow-teal-200 active:scale-95">Далі <i class="fa-solid fa-chevron-right ml-1"></i></button>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 3: QUIZ -->
+      <section id="tab-quiz" class="hidden p-4 fade-in">
+        
+        <!-- Quiz Setup -->
+        <div id="quiz-setup" class="max-w-lg mx-auto bg-white rounded-3xl p-6 shadow-sm border border-slate-200">
+          <h2 class="text-xl font-extrabold text-slate-800 text-center mb-6">Налаштування тесту</h2>
+          
+          <div class="space-y-6">
+            <div>
+              <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3"><i class="fa-solid fa-font text-teal-500 mr-1"></i> Текстовий режим</h3>
+              <div class="grid grid-cols-1 gap-2">
+                <button onclick="startQuiz('standard', '1to2')" class="text-left px-4 py-3 bg-slate-50 hover:bg-teal-50 border border-slate-200 hover:border-teal-300 rounded-xl font-semibold text-slate-700 transition group flex items-center justify-between">
+                  <span id="btn-txt-1to2">Кол1 ➔ Кол2</span>
+                  <i class="fa-solid fa-play text-slate-300 group-hover:text-teal-500 transition"></i>
+                </button>
+                <button onclick="startQuiz('standard', '2to1')" class="text-left px-4 py-3 bg-slate-50 hover:bg-teal-50 border border-slate-200 hover:border-teal-300 rounded-xl font-semibold text-slate-700 transition group flex items-center justify-between">
+                  <span id="btn-txt-2to1">Кол2 ➔ Кол1</span>
+                  <i class="fa-solid fa-play text-slate-300 group-hover:text-teal-500 transition"></i>
+                </button>
+                <button onclick="startQuiz('standard', 'mixed')" class="text-left px-4 py-3 bg-slate-50 hover:bg-teal-50 border border-slate-200 hover:border-teal-300 rounded-xl font-semibold text-slate-700 transition group flex items-center justify-between">
+                  <span>Змішаний (Випадково)</span>
+                  <i class="fa-solid fa-shuffle text-slate-300 group-hover:text-teal-500 transition"></i>
+                </button>
+              </div>
+            </div>
+
+            <div>
+              <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3"><i class="fa-solid fa-headphones text-teal-500 mr-1"></i> Аудіювання (на слух)</h3>
+              <div class="grid grid-cols-1 gap-2">
+                <button onclick="startQuiz('listening', '1to2')" class="text-left px-4 py-3 bg-slate-50 hover:bg-teal-50 border border-slate-200 hover:border-teal-300 rounded-xl font-semibold text-slate-700 transition group flex items-center justify-between">
+                  <span id="btn-aud-1to2">Аудіо Кол1 ➔ Текст Кол2</span>
+                  <i class="fa-solid fa-play text-slate-300 group-hover:text-teal-500 transition"></i>
+                </button>
+                <button onclick="startQuiz('listening', '2to1')" class="text-left px-4 py-3 bg-slate-50 hover:bg-teal-50 border border-slate-200 hover:border-teal-300 rounded-xl font-semibold text-slate-700 transition group flex items-center justify-between">
+                  <span id="btn-aud-2to1">Аудіо Кол2 ➔ Текст Кол1</span>
+                  <i class="fa-solid fa-play text-slate-300 group-hover:text-teal-500 transition"></i>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Quiz Active -->
+        <div id="quiz-active" class="hidden max-w-2xl mx-auto space-y-4">
+          <!-- Top Bar -->
+          <div class="bg-white rounded-2xl p-4 shadow-sm border border-slate-200 flex justify-between items-center font-bold text-sm">
+            <div class="text-slate-500" id="quiz-progress-text">Питання 1/10</div>
+            <div class="text-teal-600 bg-teal-50 px-3 py-1 rounded-lg border border-teal-100">Правильно: <span id="quiz-score-val">0</span></div>
+            <button onclick="cancelQuiz()" class="text-rose-500 hover:bg-rose-50 px-2 py-1 rounded transition"><i class="fa-solid fa-xmark"></i></button>
+          </div>
+
+          <!-- Question Area -->
+          <div class="bg-white rounded-3xl p-6 md:p-10 shadow-sm border border-slate-200 text-center relative overflow-hidden">
+            <!-- Timer Bar -->
+            <div class="absolute top-0 left-0 w-full h-1.5 bg-slate-100">
+              <div id="quiz-timer-bar" class="h-full bg-teal-500 w-full"></div>
+            </div>
+            
+            <div class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4 mt-2" id="quiz-q-label">Оберіть переклад</div>
+            
+            <!-- Standard Text Question -->
+            <h2 id="quiz-q-text" class="text-4xl font-extrabold text-slate-800 break-words">...</h2>
+            
+            <!-- Listening Audio Button (Hidden in standard) -->
+            <button id="quiz-q-audio-btn" onclick="playQuizAudio()" class="hidden mx-auto w-24 h-24 bg-teal-100 text-teal-600 rounded-full flex items-center justify-center text-4xl hover:bg-teal-200 transition shadow-inner shadow-teal-300/50 active:scale-95">
+              <i class="fa-solid fa-volume-high"></i>
+            </button>
+          </div>
+
+          <!-- Options Grid -->
+          <div id="quiz-options-grid" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+            <!-- Buttons generated by JS -->
+          </div>
+        </div>
+
+        <!-- Quiz Result -->
+        <div id="quiz-result" class="hidden max-w-md mx-auto bg-white rounded-3xl p-8 shadow-sm border border-slate-200 text-center">
+          <div class="w-20 h-20 bg-teal-100 text-teal-600 rounded-full flex items-center justify-center text-4xl mx-auto mb-6">
+            <i class="fa-solid fa-trophy"></i>
+          </div>
+          <h2 class="text-3xl font-extrabold text-slate-800 mb-2">Тест завершено!</h2>
+          <p class="text-slate-500 font-medium mb-6">Ваш результат:</p>
+          
+          <div class="bg-slate-50 rounded-2xl p-6 border border-slate-100 mb-8">
+            <div class="text-5xl font-black text-teal-600 mb-2" id="res-score">10/10</div>
+            <div class="text-lg font-bold text-slate-400" id="res-pct">100%</div>
+          </div>
+          
+          <button onclick="document.getElementById('quiz-result').classList.add('hidden'); document.getElementById('quiz-setup').classList.remove('hidden');" class="w-full bg-teal-600 hover:bg-teal-700 text-white font-bold py-3.5 px-6 rounded-2xl transition shadow-md">
+            Пройти ще раз
+          </button>
+        </div>
+
+      </section>
+
+    </main>
+
+    <!-- Bottom Navigation -->
+    <nav class="bg-white border-t border-slate-200 pb-safe absolute bottom-0 w-full z-20">
+      <div class="max-w-4xl mx-auto px-2 py-2 flex justify-around items-center">
+        <button onclick="switchTab('select')" id="nav-select" class="nav-btn flex-1 flex flex-col items-center p-2 rounded-xl text-teal-600 bg-teal-50 transition font-medium">
+          <i class="fa-solid fa-list-check text-xl mb-1"></i>
+          <span class="text-[10px] uppercase font-bold tracking-wide">Словник</span>
+        </button>
+        <button onclick="switchTab('cards')" id="nav-cards" class="nav-btn flex-1 flex flex-col items-center p-2 rounded-xl text-slate-400 hover:text-teal-600 hover:bg-slate-50 transition font-medium">
+          <i class="fa-solid fa-clone text-xl mb-1"></i>
+          <span class="text-[10px] uppercase font-bold tracking-wide">Картки</span>
+        </button>
+        <button onclick="switchTab('quiz')" id="nav-quiz" class="nav-btn flex-1 flex flex-col items-center p-2 rounded-xl text-slate-400 hover:text-teal-600 hover:bg-slate-50 transition font-medium">
+          <i class="fa-solid fa-gamepad text-xl mb-1"></i>
+          <span class="text-[10px] uppercase font-bold tracking-wide">Тести</span>
+        </button>
+      </div>
+    </nav>
+  </div>
+
+  <script>
+    // --- CORE LOGIC & STATE ---
+    let activeWords = [];
+    let voices = [];
+    
+    // TTS Initialization
+    window.speechSynthesis.onvoiceschanged = () => {
+      voices = window.speechSynthesis.getVoices();
+    };
+
+    window.onload = () => {
+      if (window.IS_EXPORTED) {
+        document.getElementById('builder-ui').remove();
+        const appUi = document.getElementById('app-ui');
+        appUi.classList.remove('hidden');
+        appUi.classList.add('flex'); // Because it's flex-col
+        initApp();
+      }
+    };
+
+    // --- BUILDER LOGIC ---
+    function parseBuilderData() {
+      const wText = document.getElementById('b-words').value;
+      const lines = wText.split('\n');
+      const parsed = [];
+      
+      lines.forEach((line, index) => {
+        let parts = line.split('-');
+        if (parts.length < 2) parts = line.split(';'); // fallback separator
+        if (parts.length >= 2) {
+          const t = parts[0].trim();
+          const d = parts.slice(1).join('-').trim();
+          if (t && d) parsed.push({ id: index, col1: t, col2: d, active: true });
+        }
+      });
+
+      window.APP_DATA = {
+        col1Name: document.getElementById('b-col1-name').value || "Колонка 1",
+        col2Name: document.getElementById('b-col2-name').value || "Колонка 2",
+        col1Lang: document.getElementById('b-col1-lang').value,
+        col2Lang: document.getElementById('b-col2-lang').value,
+        words: parsed
+      };
+    }
+
+    function previewApp() {
+      parseBuilderData();
+      if (window.APP_DATA.words.length === 0) return alert("Додайте хоча б одну пару слів!");
+      
+      document.getElementById('builder-ui').classList.add('hidden');
+      document.getElementById('app-ui').classList.remove('hidden');
+      document.getElementById('app-ui').classList.add('flex');
+      document.getElementById('btn-back-builder').classList.remove('hidden'); // Show back button
+      
+      initApp();
+    }
+
+    function showBuilder() {
+      document.getElementById('app-ui').classList.add('hidden');
+      document.getElementById('app-ui').classList.remove('flex');
+      document.getElementById('builder-ui').classList.remove('hidden');
+      
+      // Stop media if running
+      cancelQuiz();
+      window.speechSynthesis.cancel();
+    }
+
+    function exportApp() {
+      parseBuilderData();
+      if (window.APP_DATA.words.length === 0) return alert("Додайте хоча б одну пару слів!");
+
+      // Prepare DOM clone
+      const clone = document.documentElement.cloneNode(true);
+      
+      // Remove Builder UI entirely
+      const bUi = clone.querySelector('#builder-ui');
+      if (bUi) bUi.remove();
+
+      // Ensure App UI is visible
+      const aUi = clone.querySelector('#app-ui');
+      if (aUi) {
+        aUi.classList.remove('hidden');
+        aUi.classList.add('flex');
+      }
+      
+      // Hide the "Edit" button in the exported version
+      const btnBack = clone.querySelector('#btn-back-builder');
+      if (btnBack) btnBack.remove();
+
+      // Inject JSON Data
+      const dataScript = clone.querySelector('#app-data');
+      if (dataScript) {
+        const jsonStr = JSON.stringify(window.APP_DATA);
+        dataScript.textContent = `\nwindow.IS_EXPORTED = true;\nwindow.APP_DATA = ${jsonStr};\n`;
+      }
+
+      // Trigger Download
+      const htmlStr = "<!DOCTYPE html>\n<html lang=\"uk\">\n" + clone.innerHTML + "\n</html>";
+      const blob = new Blob([htmlStr], { type: 'text/html;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `Тренажер_${window.APP_DATA.col1Name}.html`.replace(/\s/g, '_');
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
+
+
+    // --- APP INITIALIZATION ---
+    function initApp() {
+      activeWords = [...window.APP_DATA.words];
+      
+      // Update UI Labels
+      document.getElementById('app-title').innerText = "Тренажер Слів";
+      document.getElementById('app-subtitle').innerText = `${window.APP_DATA.col1Name} ⇄ ${window.APP_DATA.col2Name}`;
+      
+      document.getElementById('th-col1').innerText = window.APP_DATA.col1Name;
+      document.getElementById('th-col2').innerText = window.APP_DATA.col2Name;
+
+      // Update Quiz Buttons texts dynamically based on column names
+      document.getElementById('btn-txt-1to2').innerText = `${window.APP_DATA.col1Name} ➔ ${window.APP_DATA.col2Name}`;
+      document.getElementById('btn-txt-2to1').innerText = `${window.APP_DATA.col2Name} ➔ ${window.APP_DATA.col1Name}`;
+      document.getElementById('btn-aud-1to2').innerText = `Аудіо (${window.APP_DATA.col1Name}) ➔ Текст (${window.APP_DATA.col2Name})`;
+      document.getElementById('btn-aud-2to1').innerText = `Аудіо (${window.APP_DATA.col2Name}) ➔ Текст (${window.APP_DATA.col1Name})`;
+
+      renderDictionary();
+      switchTab('select');
+    }
+
+    // --- NAVIGATION ---
+    function switchTab(tab) {
+      const tabs = ['select', 'cards', 'quiz'];
+      tabs.forEach(t => {
+        document.getElementById(`tab-${t}`).classList.add('hidden');
+        
+        // Reset styles
+        const btn = document.getElementById(`nav-${t}`);
+        btn.className = "nav-btn flex-1 flex flex-col items-center p-2 rounded-xl text-slate-400 hover:text-teal-600 hover:bg-slate-50 transition font-medium";
+      });
+
+      document.getElementById(`tab-${tab}`).classList.remove('hidden');
+      const activeBtn = document.getElementById(`nav-${tab}`);
+      activeBtn.className = "nav-btn flex-1 flex flex-col items-center p-2 rounded-xl text-teal-600 bg-teal-50 transition font-medium";
+
+      // Stop Audio on tab switch
+      window.speechSynthesis.cancel();
+      cancelQuiz(); // stop timer if active
+
+      if (tab === 'cards') initCards();
+      if (tab === 'quiz') resetQuizSetup();
+    }
+
+
+    // --- TTS HELPER ---
+    function playTTS(text, langCode) {
+      if (!langCode || langCode === 'none' || !text) return;
+      window.speechSynthesis.cancel();
+      const u = new SpeechSynthesisUtterance(text);
+      u.lang = langCode;
+      
+      // Try to find Google voices for better quality
+      const preferred = voices.find(v => v.lang.includes(langCode.split('-')[0]) && v.name.toLowerCase().includes("google"));
+      if (preferred) u.voice = preferred;
+      
+      window.speechSynthesis.speak(u);
+    }
+
+
+    // --- TAB 1: DICTIONARY ---
+    function renderDictionary() {
+      const tbody = document.getElementById('dict-tbody');
+      tbody.innerHTML = '';
+      window.APP_DATA.words.forEach((w, i) => {
+        const tr = document.createElement('tr');
+        tr.className = "hover:bg-teal-50 transition border-b border-slate-100 last:border-0";
+        tr.innerHTML = `
+          <td class="p-4 text-center text-slate-400 text-xs">${i + 1}</td>
+          <td class="p-4">${escapeHTML(w.col1)}</td>
+          <td class="p-4 text-slate-500">${escapeHTML(w.col2)}</td>
+          <td class="p-4 text-center">
+            <input type="checkbox" ${w.active ? 'checked' : ''} onchange="toggleWord(${i}, this.checked)" class="w-5 h-5 text-teal-600 rounded border-slate-300 focus:ring-teal-500 cursor-pointer">
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+      updateActiveWords();
+    }
+
+    function toggleWord(index, isActive) {
+      window.APP_DATA.words[index].active = isActive;
+      updateActiveWords();
+    }
+
+    function toggleAllWords(isActive) {
+      window.APP_DATA.words.forEach(w => w.active = isActive);
+      renderDictionary();
+    }
+
+    function updateActiveWords() {
+      activeWords = window.APP_DATA.words.filter(w => w.active);
+    }
+
+
+    // --- TAB 2: FLASHCARDS ---
+    let cardIdx = 0;
+    let isFlipped = false;
+    let cardDir = '1to2'; // '1to2' or '2to1'
+
+    function initCards() {
+      if (activeWords.length === 0) return alert("Оберіть слова в словнику!");
+      cardIdx = 0;
+      resetCards();
+    }
+
+    function resetCards() {
+      cardDir = document.getElementById('card-direction').value;
+      isFlipped = false;
+      document.getElementById('flashcard-inner').classList.remove('rotate-y-180');
+      showCard();
+    }
+
+    function showCard() {
+      if (activeWords.length === 0) return;
+      
+      const w = activeWords[cardIdx];
+      const is1to2 = cardDir === '1to2';
+      
+      const frontText = is1to2 ? w.col1 : w.col2;
+      const backText = is1to2 ? w.col2 : w.col1;
+      
+      const frontLabel = is1to2 ? window.APP_DATA.col1Name : window.APP_DATA.col2Name;
+      const backLabel = is1to2 ? window.APP_DATA.col2Name : window.APP_DATA.col1Name;
+
+      document.getElementById('card-front-text').innerText = frontText;
+      document.getElementById('card-back-text').innerText = backText;
+      document.getElementById('card-front-label').innerText = frontLabel;
+      document.getElementById('card-back-label').innerText = backLabel;
+      
+      document.getElementById('card-counter').innerText = `${cardIdx + 1} / ${activeWords.length}`;
+
+      isFlipped = false;
+      document.getElementById('flashcard-inner').classList.remove('rotate-y-180');
+
+      if (document.getElementById('card-auto-tts').checked) {
+         playCardAudio(null, 'front');
+      }
+    }
+
+    function flipCard() {
+      isFlipped = !isFlipped;
+      if (isFlipped) {
+        document.getElementById('flashcard-inner').classList.add('rotate-y-180');
+        if (document.getElementById('card-auto-tts').checked) playCardAudio(null, 'back');
+      } else {
+        document.getElementById('flashcard-inner').classList.remove('rotate-y-180');
+      }
+    }
+
+    function playCardAudio(e, side) {
+      if (e) e.stopPropagation();
+      const w = activeWords[cardIdx];
+      const is1to2 = cardDir === '1to2';
+      
+      let textToSpeak, langCode;
+      
+      if (side === 'front') {
+        textToSpeak = is1to2 ? w.col1 : w.col2;
+        langCode = is1to2 ? window.APP_DATA.col1Lang : window.APP_DATA.col2Lang;
+      } else {
+        textToSpeak = is1to2 ? w.col2 : w.col1;
+        langCode = is1to2 ? window.APP_DATA.col2Lang : window.APP_DATA.col1Lang;
+      }
+      
+      playTTS(textToSpeak, langCode);
+    }
+
+    function nextCard() { cardIdx = (cardIdx + 1) % activeWords.length; showCard(); }
+    function prevCard() { cardIdx = (cardIdx - 1 + activeWords.length) % activeWords.length; showCard(); }
+    function shuffleCards() {
+      activeWords.sort(() => Math.random() - 0.5);
+      cardIdx = 0;
+      showCard();
+    }
+
+
+    // --- TAB 3: QUIZ ---
+    let quizMode = 'standard'; // 'standard' or 'listening'
+    let quizDir = '1to2'; // '1to2', '2to1', 'mixed'
+    let qQuestions = [];
+    let qIdx = 0;
+    let qScore = 0;
+    let timerInt;
+    let timeLeft = 10;
+    let isAnswered = false;
+
+    function resetQuizSetup() {
+      document.getElementById('quiz-setup').classList.remove('hidden');
+      document.getElementById('quiz-active').classList.add('hidden');
+      document.getElementById('quiz-result').classList.add('hidden');
+      cancelQuiz();
+    }
+
+    function startQuiz(mode, dir) {
+      if (activeWords.length < 2) return alert("Оберіть мінімум 2 слова для тесту!");
+      
+      quizMode = mode;
+      quizDir = dir;
+      qScore = 0;
+      qIdx = 0;
+      
+      // Shuffle questions
+      qQuestions = [...activeWords].sort(() => Math.random() - 0.5);
+      // Limit to max 20 questions for a session to not exhaust
+      if (qQuestions.length > 20) qQuestions = qQuestions.slice(0, 20);
+
+      document.getElementById('quiz-setup').classList.add('hidden');
+      document.getElementById('quiz-active').classList.remove('hidden');
+      
+      renderQuizQuestion();
+    }
+
+    function renderQuizQuestion() {
+      isAnswered = false;
+      document.getElementById('quiz-score-val').innerText = qScore;
+      document.getElementById('quiz-progress-text').innerText = `Питання ${qIdx + 1}/${qQuestions.length}`;
+      
+      const q = qQuestions[qIdx];
+      
+      // Determine current direction (for mixed, roll the dice)
+      let currentDir = quizDir;
+      if (quizDir === 'mixed') currentDir = Math.random() > 0.5 ? '1to2' : '2to1';
+
+      const is1to2 = currentDir === '1to2';
+      
+      const qTerm = is1to2 ? q.col1 : q.col2;
+      const qDef = is1to2 ? q.col2 : q.col1;
+      const qLang = is1to2 ? window.APP_DATA.col1Lang : window.APP_DATA.col2Lang;
+      const optLang = is1to2 ? window.APP_DATA.col2Lang : window.APP_DATA.col1Lang;
+      
+      const qTextEl = document.getElementById('quiz-q-text');
+      const qAudioBtn = document.getElementById('quiz-q-audio-btn');
+      const qLabel = document.getElementById('quiz-q-label');
+      
+      // Setup display based on mode
+      if (quizMode === 'listening') {
+        qTextEl.classList.add('hidden');
+        qAudioBtn.classList.remove('hidden');
+        qLabel.innerText = "Прослухайте та оберіть варіант";
+        // Attach data for play button
+        qAudioBtn.dataset.text = qTerm;
+        qAudioBtn.dataset.lang = qLang;
+        // Auto play
+        playTTS(qTerm, qLang);
+      } else {
+        qTextEl.classList.remove('hidden');
+        qAudioBtn.classList.add('hidden');
+        qLabel.innerText = "Оберіть правильний переклад";
+        qTextEl.innerText = qTerm;
+      }
+
+      // Generate Options (up to 12)
+      let options = [qDef];
+      // Get all other possible answers from active words
+      let otherOpts = activeWords
+        .map(w => is1to2 ? w.col2 : w.col1)
+        .filter(opt => opt !== qDef)
+        .sort(() => Math.random() - 0.5);
+      
+      const maxOpts = Math.min(12, activeWords.length);
+      for(let i=0; i < maxOpts - 1; i++) {
+        if(otherOpts[i]) options.push(otherOpts[i]);
+      }
+      
+      options.sort(() => Math.random() - 0.5); // Shuffle final options
+
+      const grid = document.getElementById('quiz-options-grid');
+      grid.innerHTML = '';
+      
+      options.forEach(opt => {
+        const btn = document.createElement('button');
+        btn.className = "quiz-opt-btn bg-white border-2 border-slate-200 text-slate-700 font-bold p-3 rounded-2xl hover:bg-slate-50 hover:border-teal-300 transition text-sm sm:text-base break-words";
+        btn.innerText = opt;
+        btn.onclick = () => handleAnswer(btn, opt === qDef);
+        grid.appendChild(btn);
+      });
+
+      startTimer();
+    }
+
+    function playQuizAudio() {
+      const btn = document.getElementById('quiz-q-audio-btn');
+      playTTS(btn.dataset.text, btn.dataset.lang);
+    }
+
+    function startTimer() {
+      clearInterval(timerInt);
+      timeLeft = 10;
+      const bar = document.getElementById('quiz-timer-bar');
+      bar.style.width = '100%';
+      bar.style.backgroundColor = '#14b8a6'; // teal-500
+
+      timerInt = setInterval(() => {
+        timeLeft -= 0.1;
+        const pct = (timeLeft / 10) * 100;
+        bar.style.width = `${pct}%`;
+        
+        if (timeLeft <= 3) bar.style.backgroundColor = '#f43f5e'; // rose-500
+        
+        if (timeLeft <= 0) {
+          handleAnswer(null, false, true); // Timeout
+        }
+      }, 100);
+    }
+
+    function handleAnswer(btnClicked, isCorrect, isTimeout = false) {
+      if (isAnswered) return;
+      isAnswered = true;
+      clearInterval(timerInt);
+      
+      const btns = document.querySelectorAll('.quiz-opt-btn');
+      
+      if (isCorrect) qScore++;
+      document.getElementById('quiz-score-val').innerText = qScore;
+
+      // Determine correct answer text to highlight it
+      const currentDir = (quizDir === 'mixed' && document.getElementById('quiz-q-text').innerText === qQuestions[qIdx].col2) ? '2to1' : 
+                         (quizDir === 'mixed' ? '1to2' : quizDir);
+                         // logic for mixed is tricky, safer:
+      
+      const is1to2 = quizMode === 'listening' ? 
+        (document.getElementById('quiz-q-audio-btn').dataset.text === qQuestions[qIdx].col1) : 
+        (document.getElementById('quiz-q-text').innerText === qQuestions[qIdx].col1);
+
+      const correctText = is1to2 ? qQuestions[qIdx].col2 : qQuestions[qIdx].col1;
+
+      // Reveal answers
+      btns.forEach(b => {
+        b.disabled = true;
+        if (b.innerText === correctText) {
+          b.className = "quiz-opt-btn bg-emerald-100 border-2 border-emerald-500 text-emerald-800 font-bold p-3 rounded-2xl text-sm sm:text-base";
+        } else if (b === btnClicked) {
+          b.className = "quiz-opt-btn bg-rose-100 border-2 border-rose-500 text-rose-800 font-bold p-3 rounded-2xl text-sm sm:text-base line-through opacity-70";
+        } else {
+          b.classList.add('opacity-50');
+        }
+      });
+
+      if (isTimeout) {
+        document.getElementById('quiz-timer-bar').style.width = '0%';
+      }
+
+      // Proceed
+      setTimeout(() => {
+        qIdx++;
+        if (qIdx < qQuestions.length) {
+          renderQuizQuestion();
+        } else {
+          showQuizResult();
+        }
+      }, 1500);
+    }
+
+    function showQuizResult() {
+      document.getElementById('quiz-active').classList.add('hidden');
+      document.getElementById('quiz-result').classList.remove('hidden');
+      
+      document.getElementById('res-score').innerText = `${qScore}/${qQuestions.length}`;
+      const pct = Math.round((qScore / qQuestions.length) * 100);
+      document.getElementById('res-pct').innerText = `${pct}% Правильно`;
+    }
+
+    function cancelQuiz() {
+      clearInterval(timerInt);
+      document.getElementById('quiz-active').classList.add('hidden');
+      document.getElementById('quiz-setup').classList.remove('hidden');
+      window.speechSynthesis.cancel();
+    }
+
+    // UTILS
+    function escapeHTML(str) {
+      return str.replace(/[&<>'"]/g, tag => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;'
+      }[tag]));
+    }
+  </script>
+</body>
+</html>
