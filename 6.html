@@ -1,0 +1,989 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Інтерактивний Компас</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            /* Фонова сітка для зручності орієнтування */
+            background-color: #1a202c;
+            background-image: 
+                linear-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+            background-size: 50px 50px;
+            overflow: hidden; /* Заборона прокрутки сторінки */
+            touch-action: none; /* Заборона стандартних сенсорних дій для кастомного drag-n-drop */
+            font-family: 'Inter', sans-serif;
+        }
+
+        .grab-cursor { cursor: grab; }
+        .grabbing-cursor { cursor: grabbing !important; }
+        
+        /* Спеціальний курсор для обертання */
+        .rotate-cursor { cursor: crosshair; }
+
+        .shadow-glow {
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.5), inset 0 0 20px rgba(255, 255, 255, 0.1);
+        }
+
+        @keyframes pulse-ring {
+            0% { transform: scale(0.95); opacity: 0.8; }
+            50% { transform: scale(1.15); opacity: 0.4; }
+            100% { transform: scale(0.95); opacity: 0.8; }
+        }
+        .animate-pulse-ring {
+            animation: pulse-ring 2s infinite ease-in-out;
+        }
+    </style>
+</head>
+<body class="w-screen h-screen relative select-none">
+
+    <!-- Полотно для малювання ліній маршруту -->
+    <svg id="route-svg" class="fixed inset-0 w-full h-full pointer-events-none z-10"></svg>
+
+    <!-- Інформаційна панель -->
+    <div class="absolute top-4 left-4 bg-gray-900 bg-opacity-90 text-white p-4 rounded-xl shadow-lg border border-gray-700 z-30 w-72">
+        <h1 class="text-lg font-bold mb-2 text-blue-400">Навігація</h1>
+        <div class="text-sm space-y-1">
+            <p>Встановлений Азимут: <span id="azimuth-display" class="font-mono text-yellow-400 font-bold">0°</span></p>
+            <p>Напрямок на Північ: <span id="heading-display" class="font-mono text-green-400 font-bold">0°</span></p>
+            <p id="tree-info-row">Азимут на Дерево: <span id="tree-azimuth-display" class="font-mono text-cyan-400 font-bold">0°</span></p>
+        </div>
+        
+        <!-- Кнопка старту/зупинки режиму завдань -->
+        <button id="toggle-quiz-btn" class="mt-3 w-full bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white font-semibold py-2 px-3 rounded-lg shadow transition text-sm cursor-pointer">
+            🎯 Визначення азимуту (6 задач)
+        </button>
+
+        <!-- Кнопка старту/зупинки руху за маршрутом -->
+        <button id="toggle-route-btn" class="mt-2 w-full bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white font-semibold py-2 px-3 rounded-lg shadow transition text-sm cursor-pointer">
+            🧭 Рух за маршрутом
+        </button>
+
+        <div class="mt-3 text-xs text-gray-400 space-y-1 pointer-events-none">
+            <p>🖐 Перетягніть компас за центр.</p>
+            <p>🔄 Крутіть зовнішнє кільце для азимуту.</p>
+            <p>📍 Переміщуйте маркер Півночі.</p>
+            <p id="hint-extra">🌲 Переміщуйте дерево для його азимуту.</p>
+        </div>
+    </div>
+
+    <!-- Віконечко завдань (знизу екрана) -->
+    <div id="quiz-panel" class="hidden fixed bottom-6 left-1/2 transform -translate-x-1/2 bg-gray-900 bg-opacity-95 text-white p-4 sm:p-5 rounded-2xl shadow-2xl border-2 border-blue-500/60 z-50 w-11/12 max-w-md transition-all">
+        <div class="flex justify-between items-center mb-2">
+            <span id="quiz-progress" class="text-xs font-bold uppercase tracking-wider text-blue-400 bg-blue-950 px-2.5 py-1 rounded-md border border-blue-800">Завдання 1 з 6</span>
+            <span class="text-xs text-gray-400">Допуск: ±5°</span>
+        </div>
+        
+        <p id="quiz-instruction" class="text-sm text-gray-200 mb-3">
+            Визначте азимут на дерево 🌲 за допомогою компаса та введіть значення:
+        </p>
+
+        <div id="quiz-input-group" class="flex gap-2">
+            <input type="number" id="quiz-input" min="0" max="360" placeholder="0 - 360°" 
+                class="w-full bg-gray-800 border border-gray-600 rounded-xl px-3 py-2 text-white font-mono text-lg focus:outline-none focus:border-blue-400 transition">
+            <button id="quiz-submit-btn" class="bg-green-600 hover:bg-green-500 active:bg-green-700 text-white font-bold px-5 py-2 rounded-xl shadow transition whitespace-nowrap cursor-pointer">
+                Перевірити
+            </button>
+        </div>
+
+        <!-- Кнопка перезапуску після завершення всіх 6 задач -->
+        <button id="quiz-restart-btn" class="hidden mt-2 w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-2.5 px-4 rounded-xl shadow transition cursor-pointer">
+            🔄 Пройти ще раз
+        </button>
+
+        <div id="quiz-feedback" class="mt-2.5 text-sm font-semibold min-h-[20px] text-center"></div>
+    </div>
+
+    <!-- Віконечко руху за маршрутом (знизу екрана) -->
+    <div id="route-panel" class="hidden fixed bottom-6 left-1/2 transform -translate-x-1/2 bg-gray-900 bg-opacity-95 text-white p-4 sm:p-5 rounded-2xl shadow-2xl border-2 border-emerald-500/60 z-50 w-11/12 max-w-md transition-all">
+        <div class="flex justify-between items-center mb-2">
+            <span id="route-progress" class="text-xs font-bold uppercase tracking-wider text-emerald-400 bg-emerald-950 px-2.5 py-1 rounded-md border border-emerald-800">Етап 1 з 4</span>
+            <span class="text-xs text-gray-400">Масштаб: 1 px = 1 м</span>
+        </div>
+        
+        <div id="route-leg-info" class="bg-gray-800/90 rounded-xl p-3 mb-2 border border-gray-700 flex justify-around items-center">
+            <div class="text-center">
+                <div class="text-xs text-gray-400">Азимут руху</div>
+                <div id="route-target-azimuth" class="text-2xl font-mono font-bold text-yellow-400">0°</div>
+            </div>
+            <div class="h-8 w-px bg-gray-700"></div>
+            <div class="text-center">
+                <div class="text-xs text-gray-400">Відстань</div>
+                <div id="route-target-distance" class="text-2xl font-mono font-bold text-emerald-400">0 м</div>
+            </div>
+        </div>
+
+        <p id="route-instruction" class="text-xs text-gray-300 text-center">
+            Поставте компас на фішку туриста 🥾, відкладіть азимут і перетягніть туриста на вказану відстань.
+        </p>
+
+        <button id="route-restart-btn" class="hidden mt-3 w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2.5 px-4 rounded-xl shadow transition cursor-pointer">
+            🔄 Новий маршрут
+        </button>
+
+        <div id="route-feedback" class="mt-1.5 text-sm font-semibold min-h-[20px] text-center"></div>
+    </div>
+
+    <!-- Фішка туриста для руху за маршрутом (Draggable) -->
+    <div id="hiker-marker" class="hidden absolute flex flex-col items-center justify-center grab-cursor z-25" style="left: 50%; top: 50%; transform: translate(-50%, -50%); width: 54px; height: 54px;">
+        <div class="absolute inset-0 rounded-full border-2 border-emerald-400 animate-pulse-ring pointer-events-none"></div>
+        <div class="bg-emerald-600 text-white text-2xl rounded-full w-11 h-11 flex items-center justify-center shadow-xl border-2 border-white relative z-10">🥾</div>
+        <div class="text-[10px] font-bold bg-gray-900/90 text-emerald-300 px-1.5 py-0.5 rounded mt-0.5 border border-emerald-700/60 shadow">СТАРТ</div>
+    </div>
+
+    <!-- Контейнер для пройдених контрольних точок -->
+    <div id="checkpoints-container" class="pointer-events-none"></div>
+
+    <!-- Точка Півночі (Draggable) -->
+    <div id="north-pin" class="absolute flex flex-col items-center justify-center grab-cursor z-20" style="left: 50%; top: 15%; transform: translate(-50%, -50%); width: 60px; height: 60px;">
+        <div class="bg-red-500 text-white text-xs font-bold rounded-full w-8 h-8 flex items-center justify-center shadow-lg border-2 border-red-700 relative z-10">Пн</div>
+        <div class="w-1 h-8 bg-red-500 rounded-b-full -mt-2 shadow-lg"></div>
+        <div class="absolute w-12 h-4 bg-black bg-opacity-30 rounded-full bottom-0 blur-sm"></div>
+    </div>
+
+    <!-- Об'єкт (Дерево) (Draggable) -->
+    <div id="tree-marker" class="absolute flex flex-col items-center justify-center grab-cursor z-20 transition-transform hover:scale-110" style="left: 75%; top: 35%; transform: translate(-50%, -50%); width: 60px; height: 70px;">
+        <div class="text-5xl drop-shadow-xl relative z-10">🌲</div>
+        <div class="absolute w-10 h-3 bg-black bg-opacity-30 rounded-full bottom-1 blur-sm z-0"></div>
+    </div>
+
+    <!-- Компас (Draggable) -->
+    <div id="compass-container" class="absolute z-30 grab-cursor flex items-center justify-center" style="left: 50%; top: 60%; transform: translate(-50%, -50%); width: 300px; height: 300px;">
+        
+        <!-- Основа компасу (скляний ефект) -->
+        <div class="absolute inset-0 bg-gray-800 bg-opacity-40 backdrop-blur-md rounded-full shadow-glow border-4 border-gray-700"></div>
+
+        <!-- Азимутальне кільце (Rotatable) -->
+        <div id="bezel" class="absolute w-full h-full rounded-full rotate-cursor flex items-center justify-center z-40">
+            <!-- Згенеровані поділки будуть тут -->
+            <svg id="bezel-svg" class="w-full h-full absolute inset-0" viewBox="0 0 300 300"></svg>
+            <!-- Ручка для обертання -->
+            <div class="absolute top-0 w-4 h-4 bg-yellow-400 rounded-full shadow border border-yellow-600 transform -translate-y-1/2"></div>
+        </div>
+
+        <!-- Внутрішня частина (нерухома відносно бази) -->
+        <div class="absolute inset-4 bg-gray-900 rounded-full shadow-inner border border-gray-600 flex items-center justify-center z-30 pointer-events-none">
+            <!-- Сітка -->
+            <svg class="absolute inset-0 w-full h-full opacity-20" viewBox="0 0 100 100">
+                <line x1="50" y1="0" x2="50" y2="100" stroke="white" stroke-width="0.5" />
+                <line x1="0" y1="50" x2="100" y2="50" stroke="white" stroke-width="0.5" />
+            </svg>
+            <div class="w-2 h-2 bg-white rounded-full z-50 shadow"></div> <!-- Ось стрілки -->
+        </div>
+
+        <!-- Стрілка компаса (Обертається автоматично) -->
+        <div id="needle" class="absolute w-full h-full flex items-center justify-center pointer-events-none z-40 transition-transform duration-75 ease-out">
+            <svg class="w-8 h-48 drop-shadow-xl" viewBox="0 0 40 200">
+                <!-- Північна частина (червона) -->
+                <polygon points="20,10 35,100 5,100" fill="#ef4444" stroke="#7f1d1d" stroke-width="1" />
+                <!-- Південна частина (біла) -->
+                <polygon points="5,100 35,100 20,190" fill="#f8fafc" stroke="#94a3b8" stroke-width="1" />
+                <!-- Центральне кільце -->
+                <circle cx="20" cy="100" r="5" fill="#eab308" />
+                <!-- Світіння/Відблиск на червоній частині -->
+                <polygon points="20,15 28,100 20,100" fill="rgba(255,255,255,0.3)" />
+            </svg>
+        </div>
+
+    </div>
+
+    <script>
+        // DOM Елементи
+        const compass = document.getElementById('compass-container');
+        const northPin = document.getElementById('north-pin');
+        const treeMarker = document.getElementById('tree-marker');
+        const bezel = document.getElementById('bezel');
+        const needle = document.getElementById('needle');
+        const bezelSvg = document.getElementById('bezel-svg');
+        const azimuthDisplay = document.getElementById('azimuth-display');
+        const headingDisplay = document.getElementById('heading-display');
+        const treeAzimuthDisplay = document.getElementById('tree-azimuth-display');
+
+        // Елементи режиму завдань
+        const toggleQuizBtn = document.getElementById('toggle-quiz-btn');
+        const quizPanel = document.getElementById('quiz-panel');
+        const quizProgress = document.getElementById('quiz-progress');
+        const quizInstruction = document.getElementById('quiz-instruction');
+        const quizInputGroup = document.getElementById('quiz-input-group');
+        const quizInput = document.getElementById('quiz-input');
+        const quizSubmitBtn = document.getElementById('quiz-submit-btn');
+        const quizRestartBtn = document.getElementById('quiz-restart-btn');
+        const quizFeedback = document.getElementById('quiz-feedback');
+
+        // Елементи режиму маршруту
+        const toggleRouteBtn = document.getElementById('toggle-route-btn');
+        const routePanel = document.getElementById('route-panel');
+        const routeProgress = document.getElementById('route-progress');
+        const routeLegInfo = document.getElementById('route-leg-info');
+        const routeTargetAzimuth = document.getElementById('route-target-azimuth');
+        const routeTargetDistance = document.getElementById('route-target-distance');
+        const routeInstruction = document.getElementById('route-instruction');
+        const routeRestartBtn = document.getElementById('route-restart-btn');
+        const routeFeedback = document.getElementById('route-feedback');
+        const hikerMarker = document.getElementById('hiker-marker');
+        const routeSvg = document.getElementById('route-svg');
+        const checkpointsContainer = document.getElementById('checkpoints-container');
+        const treeInfoRow = document.getElementById('tree-info-row');
+        const hintExtra = document.getElementById('hint-extra');
+
+        // Стан компаса
+        let bezelRotation = 0; // Азимут (обертання зовнішнього кільця)
+        let needleRotation = 0; // Напрямок стрілки
+        let currentTreeAzimuth = 0; // Точний поточний азимут дерева
+
+        // Стан тренування
+        let isQuizActive = false;
+        let currentTask = 1;
+        const totalTasks = 6;
+        let isTransitioning = false; // Блокування під час переходу між задачами
+
+        // Стан руху за маршрутом
+        let isRouteActive = false;
+        let routePoints = []; // Масив точок {x, y}
+        let routeLegs = []; // Масив етапів {azimuth, distance}
+        let currentLegIndex = 0;
+        const totalRouteLegs = 4;
+
+        // Генерація поділок азимутального кільця (Безеля)
+        function generateBezelTicks() {
+            const cx = 150;
+            const cy = 150;
+            const r = 140; // Радіус для поділок
+            const textR = 122; // Радіус для тексту
+
+            for (let i = 0; i < 360; i += 5) {
+                const isMajor = i % 30 === 0;
+                const isMedium = i % 10 === 0;
+                
+                const angle = (i - 90) * (Math.PI / 180);
+                const length = isMajor ? 12 : (isMedium ? 8 : 4);
+                
+                const x1 = cx + (r * Math.cos(angle));
+                const y1 = cy + (r * Math.sin(angle));
+                const x2 = cx + ((r - length) * Math.cos(angle));
+                const y2 = cy + ((r - length) * Math.sin(angle));
+
+                const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                line.setAttribute('x1', x1);
+                line.setAttribute('y1', y1);
+                line.setAttribute('x2', x2);
+                line.setAttribute('y2', y2);
+                line.setAttribute('stroke', isMajor ? '#facc15' : (isMedium ? '#cbd5e1' : '#64748b'));
+                line.setAttribute('stroke-width', isMajor ? '2' : '1');
+                bezelSvg.appendChild(line);
+
+                if (isMajor) {
+                    const tx = cx + (textR * Math.cos(angle));
+                    const ty = cy + (textR * Math.sin(angle));
+                    const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                    text.setAttribute('x', tx);
+                    text.setAttribute('y', ty);
+                    text.setAttribute('fill', '#f8fafc');
+                    text.setAttribute('font-size', '10');
+                    text.setAttribute('font-family', 'sans-serif');
+                    text.setAttribute('text-anchor', 'middle');
+                    text.setAttribute('alignment-baseline', 'middle');
+                    text.setAttribute('transform', `rotate(${i}, ${tx}, ${ty})`); // Текст орієнтований по колу
+                    
+                    let label = i;
+                    if (i === 0) label = 'N';
+                    if (i === 90) label = 'E';
+                    if (i === 180) label = 'S';
+                    if (i === 270) label = 'W';
+                    
+                    text.textContent = label;
+                    if(typeof label === 'string') {
+                        text.setAttribute('font-weight', 'bold');
+                        text.setAttribute('font-size', '14');
+                        if(label === 'N') text.setAttribute('fill', '#ef4444');
+                    }
+                    
+                    bezelSvg.appendChild(text);
+                }
+            }
+        }
+        generateBezelTicks();
+
+        // Функція для оновлення напрямку стрілки
+        function updateNeedle() {
+            const compassRect = compass.getBoundingClientRect();
+            const pinRect = northPin.getBoundingClientRect();
+
+            // Знаходимо центри елементів
+            const compassX = compassRect.left + compassRect.width / 2;
+            const compassY = compassRect.top + compassRect.height / 2;
+            
+            // Центр основи "піну" (маркера півночі)
+            const pinX = pinRect.left + pinRect.width / 2;
+            const pinY = pinRect.bottom - 5; // Вказуємо на низ маркера
+
+            // Обчислюємо кут між компасом та піном
+            const deltaX = pinX - compassX;
+            const deltaY = pinY - compassY;
+            
+            // atan2 дає кут в радіанах від осі X. 
+            // Додаємо 90 градусів (Math.PI/2), оскільки наша стрілка вказує вгору при 0 градусів.
+            let angleRad = Math.atan2(deltaY, deltaX);
+            let angleDeg = angleRad * (180 / Math.PI) + 90;
+
+            // Нормалізація кута (0-360)
+            if (angleDeg < 0) angleDeg += 360;
+            
+            needleRotation = angleDeg;
+            needle.style.transform = `rotate(${needleRotation}deg)`;
+
+            // Оновлюємо інформаційну панель
+            headingDisplay.innerText = `${Math.round(needleRotation)}°`;
+
+            // Обчислення азимуту на Дерево
+            const treeRect = treeMarker.getBoundingClientRect();
+            const treeX = treeRect.left + treeRect.width / 2;
+            const treeY = treeRect.bottom - 10; // Вказуємо на основу дерева
+            
+            const deltaXTree = treeX - compassX;
+            const deltaYTree = treeY - compassY;
+            
+            let angleRadTree = Math.atan2(deltaYTree, deltaXTree);
+            let angleDegTree = angleRadTree * (180 / Math.PI) + 90;
+            if (angleDegTree < 0) angleDegTree += 360;
+
+            // Азимут - це кут між Північчю та об'єктом за годинниковою стрілкою
+            let treeAzimuth = angleDegTree - needleRotation;
+            if (treeAzimuth < 0) treeAzimuth += 360;
+
+            currentTreeAzimuth = Math.round(treeAzimuth) % 360;
+
+            // Під час тренування ховаємо підказку, щоб користувач визначав сам
+            if (isQuizActive) {
+                treeAzimuthDisplay.innerText = '???°';
+                treeAzimuthDisplay.classList.replace('text-cyan-400', 'text-gray-500');
+            } else {
+                treeAzimuthDisplay.innerText = `${currentTreeAzimuth}°`;
+                treeAzimuthDisplay.classList.replace('text-gray-500', 'text-cyan-400');
+            }
+        }
+
+        // --- Логіка перетягування (Drag & Drop) ---
+        function makeDraggable(element, onDragCallback) {
+            let isDragging = false;
+            let startX, startY;
+            let initialLeft, initialTop;
+
+            function onDown(e) {
+                // Якщо клік був по кільцю азимута (всередині компаса), не перетягуємо компас, а крутимо кільце
+                if (element === compass && (e.target === bezel || bezel.contains(e.target))) {
+                    return; 
+                }
+
+                isDragging = true;
+                element.classList.add('grabbing-cursor');
+                
+                const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+                const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+                
+                startX = clientX;
+                startY = clientY;
+                
+                // Витягуємо поточні позиції з інлайн стилів
+                const transformStr = element.style.transform;
+                // Парсинг translate(-50%, -50%) - елементи центровані
+                initialLeft = element.offsetLeft;
+                initialTop = element.offsetTop;
+
+                e.preventDefault(); // Запобігаємо виділенню тексту
+            }
+
+            function onMove(e) {
+                if (!isDragging) return;
+                
+                const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+                const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+                
+                const dx = clientX - startX;
+                const dy = clientY - startY;
+
+                element.style.left = `${initialLeft + dx}px`;
+                element.style.top = `${initialTop + dy}px`;
+                
+                if (onDragCallback) onDragCallback();
+            }
+
+            function onUp() {
+                if (isDragging) {
+                    isDragging = false;
+                    element.classList.remove('grabbing-cursor');
+                    if (element === hikerMarker && isRouteActive) {
+                        checkRouteProgress();
+                    }
+                }
+            }
+
+            element.addEventListener('mousedown', onDown);
+            window.addEventListener('mousemove', onMove);
+            window.addEventListener('mouseup', onUp);
+
+            element.addEventListener('touchstart', onDown, { passive: false });
+            window.addEventListener('touchmove', onMove, { passive: false });
+            window.addEventListener('touchend', onUp);
+        }
+
+        // --- Логіка обертання кільця азимута ---
+        function makeRotatable(element) {
+            let isRotating = false;
+            let startAngle = 0;
+            let currentRotation = 0;
+
+            function getAngle(clientX, clientY) {
+                const rect = compass.getBoundingClientRect();
+                const centerX = rect.left + rect.width / 2;
+                const centerY = rect.top + rect.height / 2;
+                const dx = clientX - centerX;
+                const dy = clientY - centerY;
+                return Math.atan2(dy, dx) * (180 / Math.PI);
+            }
+
+            function onDown(e) {
+                isRotating = true;
+                const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+                const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+                
+                startAngle = getAngle(clientX, clientY);
+                // Зберігаємо поточний стан обертання перед новим рухом
+                currentRotation = bezelRotation; 
+                e.preventDefault();
+            }
+
+            function onMove(e) {
+                if (!isRotating) return;
+                const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+                const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+                
+                const currentAngle = getAngle(clientX, clientY);
+                const deltaAngle = currentAngle - startAngle;
+                
+                bezelRotation = currentRotation + deltaAngle;
+                
+                // Нормалізація 0-360
+                bezelRotation = bezelRotation % 360;
+                if (bezelRotation < 0) bezelRotation += 360;
+
+                element.style.transform = `rotate(${bezelRotation}deg)`;
+                azimuthDisplay.innerText = `${Math.round(bezelRotation)}°`;
+            }
+
+            function onUp() {
+                isRotating = false;
+            }
+
+            element.addEventListener('mousedown', onDown);
+            window.addEventListener('mousemove', onMove);
+            window.addEventListener('mouseup', onUp);
+
+            element.addEventListener('touchstart', onDown, { passive: false });
+            window.addEventListener('touchmove', onMove, { passive: false });
+            window.addEventListener('touchend', onUp);
+        }
+
+        // Ініціалізація
+        makeDraggable(northPin, updateNeedle);
+        makeDraggable(treeMarker, updateNeedle);
+        makeDraggable(compass, updateNeedle);
+        makeDraggable(hikerMarker, () => {
+            if (isRouteActive) {
+                renderRouteGraphics(true);
+                updateLiveDragDistance();
+            }
+        });
+        makeRotatable(bezel);
+        
+        // Перший розрахунок при завантаженні
+        updateNeedle();
+        
+        // Оновлення при зміні розміру вікна
+        window.addEventListener('resize', updateNeedle);
+
+        // --- Логіка режиму завдань (Тренування) ---
+        function getRandomPosition(centerX, centerY, minRadius, maxRadius, margin = 60) {
+            const w = window.innerWidth;
+            const h = window.innerHeight;
+            // Залишаємо місце знизу для панелі введення та зверху для інфо-панелі
+            const safeBottom = h - 180; 
+            
+            for (let attempt = 0; attempt < 50; attempt++) {
+                const angle = Math.random() * Math.PI * 2;
+                const radius = minRadius + Math.random() * (maxRadius - minRadius);
+                const x = centerX + Math.cos(angle) * radius;
+                const y = centerY + Math.sin(angle) * radius;
+
+                // Перевіряємо, щоб точка не виходила за межі екрана і не перекривала верхню ліву панель
+                const inTopLeftPanel = (x < 320 && y < 270);
+                if (x > margin && x < w - margin && y > margin && y < safeBottom && !inTopLeftPanel) {
+                    return { x, y };
+                }
+            }
+            // Запасний варіант, якщо екран занадто малий
+            return {
+                x: margin + Math.random() * (w - margin * 2),
+                y: margin + Math.random() * (safeBottom - margin)
+            };
+        }
+
+        function generateTask() {
+            isTransitioning = false;
+            quizProgress.innerText = `Завдання ${currentTask} з ${totalTasks}`;
+            quizInstruction.innerText = 'Визначте азимут на дерево 🌲 за допомогою компаса та введіть значення:';
+            quizInputGroup.classList.remove('hidden');
+            quizRestartBtn.classList.add('hidden');
+            quizInput.value = '';
+            quizFeedback.innerText = '';
+            quizFeedback.className = 'mt-2.5 text-sm font-semibold min-h-[20px] text-center';
+
+            // Отримуємо поточний центр компаса або центруємо його, якщо він вийшов за межі
+            const compRect = compass.getBoundingClientRect();
+            let compX = compRect.left + compRect.width / 2;
+            let compY = compRect.top + compRect.height / 2;
+
+            if (compX < 150 || compX > window.innerWidth - 150 || compY < 150 || compY > window.innerHeight - 200) {
+                compX = window.innerWidth / 2;
+                compY = window.innerHeight * 0.48;
+                compass.style.left = `${compX}px`;
+                compass.style.top = `${compY}px`;
+            }
+
+            // Генеруємо випадкову позицію для Півночі та Дерева навколо компаса
+            const maxR = Math.min(window.innerWidth, window.innerHeight) * 0.42;
+            const northPos = getRandomPosition(compX, compY, 160, Math.max(200, maxR));
+            
+            let treePos;
+            // Слідкуємо, щоб дерево і північ не злиплися в одну точку
+            do {
+                treePos = getRandomPosition(compX, compY, 160, Math.max(200, maxR));
+            } while (Math.hypot(treePos.x - northPos.x, treePos.y - northPos.y) < 80);
+
+            northPin.style.left = `${northPos.x}px`;
+            northPin.style.top = `${northPos.y}px`;
+
+            treeMarker.style.left = `${treePos.x}px`;
+            treeMarker.style.top = `${treePos.y}px`;
+
+            updateNeedle();
+            setTimeout(() => quizInput.focus(), 50);
+        }
+
+        function startQuiz() {
+            if (isRouteActive) stopRouteMode();
+            isQuizActive = true;
+            currentTask = 1;
+            toggleQuizBtn.innerText = '✖ Завершити тест';
+            toggleQuizBtn.classList.replace('bg-blue-600', 'bg-red-600');
+            toggleQuizBtn.classList.replace('hover:bg-blue-500', 'hover:bg-red-500');
+            quizPanel.classList.remove('hidden');
+            generateTask();
+        }
+
+        function stopQuiz() {
+            isQuizActive = false;
+            toggleQuizBtn.innerText = '🎯 Визначення азимуту (6 задач)';
+            toggleQuizBtn.classList.replace('bg-red-600', 'bg-blue-600');
+            toggleQuizBtn.classList.replace('hover:bg-red-500', 'hover:bg-blue-500');
+            quizPanel.classList.add('hidden');
+            updateNeedle(); // Повертаємо відображення точного азимуту
+        }
+
+        function checkAnswer() {
+            if (isTransitioning) return;
+
+            const rawVal = quizInput.value.trim();
+            if (rawVal === '') {
+                quizFeedback.innerText = '⚠️ Будь ласка, введіть число від 0 до 360.';
+                quizFeedback.className = 'mt-2.5 text-sm font-semibold min-h-[20px] text-center text-yellow-400';
+                return;
+            }
+
+            const userAzimuth = parseFloat(rawVal);
+            if (isNaN(userAzimuth) || userAzimuth < 0 || userAzimuth > 360) {
+                quizFeedback.innerText = '⚠️ Введіть коректний кут у межах 0° – 360°.';
+                quizFeedback.className = 'mt-2.5 text-sm font-semibold min-h-[20px] text-center text-yellow-400';
+                return;
+            }
+
+            // Обчислюємо найкоротшу різницю кутів по колу (враховує випадок 358° та 2°)
+            let diff = Math.abs(userAzimuth - currentTreeAzimuth) % 360;
+            if (diff > 180) {
+                diff = 360 - diff;
+            }
+
+            if (diff <= 5) {
+                isTransitioning = true;
+                quizFeedback.innerText = `✅ Правильно! Точний азимут: ${currentTreeAzimuth}°`;
+                quizFeedback.className = 'mt-2.5 text-sm font-bold min-h-[20px] text-center text-green-400';
+
+                setTimeout(() => {
+                    if (!isQuizActive) return;
+                    if (currentTask < totalTasks) {
+                        currentTask++;
+                        generateTask();
+                    } else {
+                        // Усі 6 задач виконано
+                        quizProgress.innerText = '🎉 Вітаємо!';
+                        quizInstruction.innerText = 'Ви успішно визначили азимут у всіх 6 завданнях!';
+                        quizInputGroup.classList.add('hidden');
+                        quizRestartBtn.classList.remove('hidden');
+                        quizFeedback.innerText = '';
+                        treeAzimuthDisplay.innerText = `${currentTreeAzimuth}°`;
+                        treeAzimuthDisplay.classList.replace('text-gray-500', 'text-cyan-400');
+                    }
+                }, 1400);
+            } else {
+                quizFeedback.innerText = '❌ Не зовсім точно (похибка більша за ±5°). Спробуйте ще раз!';
+                quizFeedback.className = 'mt-2.5 text-sm font-semibold min-h-[20px] text-center text-red-400';
+                quizInput.select();
+            }
+        }
+
+        // Обробники подій для тренування
+        toggleQuizBtn.addEventListener('click', () => {
+            if (isQuizActive) {
+                stopQuiz();
+            } else {
+                startQuiz();
+            }
+        });
+
+        quizSubmitBtn.addEventListener('click', checkAnswer);
+        quizInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') checkAnswer();
+        });
+        quizRestartBtn.addEventListener('click', startQuiz);
+
+        // --- Логіка режиму "Рух за маршрутом" ---
+        function updateLiveDragDistance() {
+            if (currentLegIndex >= totalRouteLegs) return;
+            const origin = routePoints[currentLegIndex];
+            const hikerRect = hikerMarker.getBoundingClientRect();
+            const hx = hikerRect.left + hikerRect.width / 2;
+            const hy = hikerRect.top + hikerRect.height / 2;
+
+            const walkedDist = Math.round(Math.hypot(hx - origin.x, hy - origin.y));
+            const targetDist = routeLegs[currentLegIndex].distance;
+            const diff = Math.abs(walkedDist - targetDist);
+
+            routeFeedback.innerText = `📏 Відстань: ${walkedDist} м (ціль: ${targetDist} м)`;
+            if (diff <= 15) {
+                routeFeedback.className = 'mt-1.5 text-sm font-bold min-h-[20px] text-center text-emerald-400';
+            } else {
+                routeFeedback.className = 'mt-1.5 text-sm font-semibold min-h-[20px] text-center text-yellow-400';
+            }
+        }
+
+        function generateRoute() {
+            routePoints = [];
+            routeLegs = [];
+            currentLegIndex = 0;
+            checkpointsContainer.innerHTML = '';
+            routeSvg.innerHTML = '';
+
+            routeLegInfo.classList.remove('hidden');
+            routeRestartBtn.classList.add('hidden');
+            routeFeedback.innerText = '';
+            routeInstruction.innerText = 'Виставте азимут на компасі праворуч та перетягніть туриста 🥾 на потрібну відстань.';
+
+            const w = window.innerWidth;
+            const h = window.innerHeight;
+            const safeBottom = h - 220;
+
+            // Розміщуємо компас з правого боку, щоб не перекривав робочу зону маршруту
+            const isDesktop = w >= 768;
+            const compassX = isDesktop ? w - 190 : w - 155;
+            const compassY = h * 0.45;
+            compass.style.left = `${compassX}px`;
+            compass.style.top = `${compassY}px`;
+
+            // Визначаємо межі робочої зони для маршруту (ліва/центральна частина екрана)
+            const routeMaxX = isDesktop ? Math.max(360, w - 380) : w - 80;
+
+            // Випадково ставимо Північ у межах видимої зони
+            const northX = Math.min(routeMaxX - 40, w * (0.3 + Math.random() * 0.35));
+            const northY = 75 + Math.random() * 85;
+            northPin.style.left = `${northX}px`;
+            northPin.style.top = `${northY}px`;
+
+            // Генеруємо стартову точку туриста у вільній зоні маршруту
+            let startX, startY;
+            let startAttempts = 0;
+            do {
+                startX = 90 + Math.random() * Math.max(120, routeMaxX - 150);
+                startY = 140 + Math.random() * Math.max(120, safeBottom - 180);
+                startAttempts++;
+            } while (startX < 330 && startY < 310 && startAttempts < 60); // Уникаємо лівої панелі
+
+            routePoints.push({ x: startX, y: startY });
+
+            // Генеруємо 4 послідовні відрізки маршруту
+            for (let i = 0; i < totalRouteLegs; i++) {
+                const prev = routePoints[i];
+                let nextX, nextY, dist, valid = false;
+
+                for (let attempt = 0; attempt < 90; attempt++) {
+                    dist = Math.round(100 + Math.random() * 140); // Відстань 100 - 240 м (px)
+                    const screenAngle = Math.random() * Math.PI * 2;
+                    nextX = prev.x + Math.cos(screenAngle) * dist;
+                    nextY = prev.y + Math.sin(screenAngle) * dist;
+
+                    const inTopLeft = (nextX < 325 && nextY < 310);
+                    const inBounds = (nextX > 70 && nextX < routeMaxX && nextY > 85 && nextY < safeBottom);
+                    
+                    // Перевіряємо, щоб точки не накладалися одна на одну
+                    const farFromOthers = routePoints.every(p => Math.hypot(p.x - nextX, p.y - nextY) > 90);
+
+                    if (inBounds && !inTopLeft && farFromOthers) {
+                        valid = true;
+                        break;
+                    }
+                }
+
+                // Запасний варіант для невеликих екранів
+                if (!valid) {
+                    nextX = 120 + Math.random() * Math.max(100, routeMaxX - 180);
+                    nextY = 240 + Math.random() * Math.max(100, safeBottom - 270);
+                    dist = Math.round(Math.hypot(nextX - prev.x, nextY - prev.y));
+                }
+
+                // Обчислюємо справжній азимут від точки prev до точки next відносно NorthPin
+                const northAngle = Math.atan2(northY - prev.y, northX - prev.x) * (180 / Math.PI) + 90;
+                const targetAngle = Math.atan2(nextY - prev.y, nextX - prev.x) * (180 / Math.PI) + 90;
+                let azimuth = Math.round((targetAngle - northAngle + 720) % 360);
+
+                routePoints.push({ x: nextX, y: nextY });
+                routeLegs.push({ azimuth, distance: dist });
+            }
+
+            // Встановлюємо туриста на стартову позицію
+            hikerMarker.style.left = `${startX}px`;
+            hikerMarker.style.top = `${startY}px`;
+            hikerMarker.querySelector('div:last-child').innerText = 'СТАРТ';
+            addCheckpointBadge(startX, startY, 'СТАРТ', 'bg-blue-500');
+
+            updateNeedle();
+            updateRouteUI();
+        }
+
+        function addCheckpointBadge(x, y, label, colorClass) {
+            const badge = document.createElement('div');
+            badge.className = 'absolute flex flex-col items-center transform -translate-x-1/2 -translate-y-1/2 z-20';
+            badge.style.left = `${x}px`;
+            badge.style.top = `${y}px`;
+            badge.innerHTML = `
+                <div class="w-4 h-4 rounded-full ${colorClass} border-2 border-white shadow-md"></div>
+                <span class="text-[10px] font-bold text-white bg-gray-900/90 px-1.5 py-0.5 rounded mt-1 border border-gray-700 shadow">${label}</span>
+            `;
+            checkpointsContainer.appendChild(badge);
+        }
+
+        function updateRouteUI() {
+            if (currentLegIndex < totalRouteLegs) {
+                const leg = routeLegs[currentLegIndex];
+                routeProgress.innerText = `Етап ${currentLegIndex + 1} з ${totalRouteLegs}`;
+                routeTargetAzimuth.innerText = `${leg.azimuth}°`;
+                routeTargetDistance.innerText = `${leg.distance} м`;
+            }
+        }
+
+        function renderRouteGraphics(showCurrentDragLine) {
+            routeSvg.innerHTML = '';
+
+            // Малюємо вже пройдені відрізки маршруту
+            for (let i = 0; i < currentLegIndex; i++) {
+                const p1 = routePoints[i];
+                const p2 = routePoints[i + 1];
+                const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                line.setAttribute('x1', p1.x);
+                line.setAttribute('y1', p1.y);
+                line.setAttribute('x2', p2.x);
+                line.setAttribute('y2', p2.y);
+                line.setAttribute('stroke', '#10b981');
+                line.setAttribute('stroke-width', '3');
+                line.setAttribute('stroke-dasharray', '6,4');
+                routeSvg.appendChild(line);
+            }
+
+            // Пунктирна лінія від поточної точки до позиції, куди тягнуть туриста + лічильник метрів на карті
+            if (showCurrentDragLine && currentLegIndex < totalRouteLegs) {
+                const origin = routePoints[currentLegIndex];
+                const hikerRect = hikerMarker.getBoundingClientRect();
+                const hx = hikerRect.left + hikerRect.width / 2;
+                const hy = hikerRect.top + hikerRect.height / 2;
+
+                const dragLine = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                dragLine.setAttribute('x1', origin.x);
+                dragLine.setAttribute('y1', origin.y);
+                dragLine.setAttribute('x2', hx);
+                dragLine.setAttribute('y2', hy);
+                dragLine.setAttribute('stroke', '#facc15');
+                dragLine.setAttribute('stroke-width', '2.5');
+                dragLine.setAttribute('stroke-dasharray', '5,5');
+                routeSvg.appendChild(dragLine);
+
+                // Динамічний бейдж з метрами прямо посередині лінії руху
+                const walkedDist = Math.round(Math.hypot(hx - origin.x, hy - origin.y));
+                if (walkedDist > 15) {
+                    const midX = (origin.x + hx) / 2;
+                    const midY = (origin.y + hy) / 2 - 14;
+
+                    const bgRect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+                    bgRect.setAttribute('x', midX - 30);
+                    bgRect.setAttribute('y', midY - 12);
+                    bgRect.setAttribute('width', '60');
+                    bgRect.setAttribute('height', '20');
+                    bgRect.setAttribute('rx', '6');
+                    bgRect.setAttribute('fill', '#111827');
+                    bgRect.setAttribute('stroke', '#facc15');
+                    bgRect.setAttribute('stroke-width', '1');
+                    routeSvg.appendChild(bgRect);
+
+                    const distLabel = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                    distLabel.setAttribute('x', midX);
+                    distLabel.setAttribute('y', midY + 2);
+                    distLabel.setAttribute('fill', '#facc15');
+                    distLabel.setAttribute('font-size', '12');
+                    distLabel.setAttribute('font-weight', 'bold');
+                    distLabel.setAttribute('font-family', 'monospace');
+                    distLabel.setAttribute('text-anchor', 'middle');
+                    distLabel.textContent = `${walkedDist} м`;
+                    routeSvg.appendChild(distLabel);
+                }
+            }
+        }
+
+        function renderRouteGraphics(showCurrentDragLine) {
+            routeSvg.innerHTML = '';
+
+            // Малюємо вже пройдені відрізки маршруту
+            for (let i = 0; i < currentLegIndex; i++) {
+                const p1 = routePoints[i];
+                const p2 = routePoints[i + 1];
+                const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                line.setAttribute('x1', p1.x);
+                line.setAttribute('y1', p1.y);
+                line.setAttribute('x2', p2.x);
+                line.setAttribute('y2', p2.y);
+                line.setAttribute('stroke', '#10b981');
+                line.setAttribute('stroke-width', '3');
+                line.setAttribute('stroke-dasharray', '6,4');
+                routeSvg.appendChild(line);
+            }
+
+            // Пунктирна лінія від поточної точки до позиції, куди тягнуть туриста
+            if (showCurrentDragLine && currentLegIndex < totalRouteLegs) {
+                const origin = routePoints[currentLegIndex];
+                const hikerRect = hikerMarker.getBoundingClientRect();
+                const hx = hikerRect.left + hikerRect.width / 2;
+                const hy = hikerRect.top + hikerRect.height / 2;
+
+                const dragLine = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                dragLine.setAttribute('x1', origin.x);
+                dragLine.setAttribute('y1', origin.y);
+                dragLine.setAttribute('x2', hx);
+                dragLine.setAttribute('y2', hy);
+                dragLine.setAttribute('stroke', '#facc15');
+                dragLine.setAttribute('stroke-width', '2');
+                dragLine.setAttribute('stroke-dasharray', '4,4');
+                routeSvg.appendChild(dragLine);
+            }
+        }
+
+        function checkRouteProgress() {
+            if (currentLegIndex >= totalRouteLegs) return;
+
+            const target = routePoints[currentLegIndex + 1];
+            const hikerRect = hikerMarker.getBoundingClientRect();
+            const hx = hikerRect.left + hikerRect.width / 2;
+            const hy = hikerRect.top + hikerRect.height / 2;
+
+            const errorDist = Math.hypot(hx - target.x, hy - target.y);
+            const tolerance = 32; // Допуск 32 метри (пікселі)
+
+            if (errorDist <= tolerance) {
+                // Фіксуємо туриста точно на контрольній точці
+                hikerMarker.style.left = `${target.x}px`;
+                hikerMarker.style.top = `${target.y}px`;
+
+                currentLegIndex++;
+                const isFinished = currentLegIndex === totalRouteLegs;
+                const label = isFinished ? '🏁 ФІНІШ' : `КП ${currentLegIndex}`;
+                hikerMarker.querySelector('div:last-child').innerText = label;
+
+                addCheckpointBadge(target.x, target.y, label, isFinished ? 'bg-yellow-500' : 'bg-emerald-500');
+                renderRouteGraphics(false);
+
+                if (isFinished) {
+                    routeProgress.innerText = '🎉 Маршрут пройдено!';
+                    routeLegInfo.classList.add('hidden');
+                    routeInstruction.innerText = 'Чудова робота! Ви успішно пройшли всі контрольні точки за азимутом.';
+                    routeRestartBtn.classList.remove('hidden');
+                    routeFeedback.innerText = '🏆 Усі 4 етапи виконано бездоганно!';
+                    routeFeedback.className = 'mt-1.5 text-sm font-bold min-h-[20px] text-center text-emerald-400';
+                } else {
+                    routeFeedback.innerText = `✅ Точку КП ${currentLegIndex} знайдено! Рухаємось далі.`;
+                    routeFeedback.className = 'mt-1.5 text-sm font-bold min-h-[20px] text-center text-emerald-400';
+                    updateRouteUI();
+                }
+            } else {
+                // Підказка, наскільки близько користувач до цілі
+                const origin = routePoints[currentLegIndex];
+                const walkedDist = Math.round(Math.hypot(hx - origin.x, hy - origin.y));
+                routeFeedback.innerText = `📍 Пройдено ~${walkedDist} м. До контрольної точки ще ~${Math.round(errorDist)} м.`;
+                routeFeedback.className = 'mt-1.5 text-xs font-semibold min-h-[20px] text-center text-yellow-400';
+            }
+        }
+
+        function startRouteMode() {
+            if (isQuizActive) stopQuiz();
+            isRouteActive = true;
+            
+            toggleRouteBtn.innerText = '✖ Завершити маршрут';
+            toggleRouteBtn.classList.replace('bg-emerald-600', 'bg-red-600');
+            toggleRouteBtn.classList.replace('hover:bg-emerald-500', 'hover:bg-red-500');
+            
+            treeMarker.classList.add('hidden');
+            treeInfoRow.classList.add('hidden');
+            hikerMarker.classList.remove('hidden');
+            routePanel.classList.remove('hidden');
+            hintExtra.innerText = '🥾 Тягніть туриста за заданим азимутом.';
+
+            generateRoute();
+        }
+
+        function stopRouteMode() {
+            isRouteActive = false;
+
+            toggleRouteBtn.innerText = '🧭 Рух за маршрутом';
+            toggleRouteBtn.classList.replace('bg-red-600', 'bg-emerald-600');
+            toggleRouteBtn.classList.replace('hover:bg-red-500', 'hover:bg-emerald-500');
+
+            treeMarker.classList.remove('hidden');
+            treeInfoRow.classList.remove('hidden');
+            hikerMarker.classList.add('hidden');
+            routePanel.classList.add('hidden');
+            routeSvg.innerHTML = '';
+            checkpointsContainer.innerHTML = '';
+            hintExtra.innerText = '🌲 Переміщуйте дерево для його азимуту.';
+            updateNeedle();
+        }
+
+        toggleRouteBtn.addEventListener('click', () => {
+            if (isRouteActive) {
+                stopRouteMode();
+            } else {
+                startRouteMode();
+            }
+        });
+
+        routeRestartBtn.addEventListener('click', generateRoute);
+
+    </script>
+</body>
+</html>
